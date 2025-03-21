@@ -263,3 +263,13 @@ scratch*/
 **/*.tmp
 *.bak
 **/*.bak
+
+# RDS files
+*.rds
+**/*.rds
+*.RDS
+**/*.RDS
+*.Rds
+**/*.Rds
+
+
