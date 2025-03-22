@@ -20,6 +20,10 @@ docker image ls
 # Create tag for the image
 pid="NCBR-0"               # Example project identifier 
 tag="v0.1.0_${pid:-test}"  # Semantic version for docker image
+# Copy your RDS file into
+# the direcotry with the
+# Dockerfile
+cp ../../data/seurat-pbmc_small.rds .  # copy your RDS file here
 docker buildx build --build-arg SEURAT_RDS=seurat-pbmc_small.rds --build-arg ${pid:-test}  --platform linux/amd64 --no-cache -f Dockerfile --tag="shinycell:${tag:-v0.1.0_test}" .
 
 # Testing, take a peek inside
