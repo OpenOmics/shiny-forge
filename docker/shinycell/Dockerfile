@@ -132,7 +132,7 @@ WORKDIR /data2
 RUN useradd -ms /bin/bash shinyuser
 USER shinyuser
 # Liston on port for incoming connections
-EXPOSE 3838
+EXPOSE 8080
 # Add healthcheck to ensure container is 
 # running and ready to accept connections,
 # if not exit with non-zero exit code. This
@@ -143,7 +143,7 @@ EXPOSE 3838
 # after 3 retries the container will be 
 # automatically restarted.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-        CMD curl -f http://localhost:3838 \
-        || (echo 'Error: Health check failed, unable to reach Shiny app on port 3838!' >&2 && exit 1)
+        CMD curl -f http://localhost:8080 \
+        || (echo 'Error: Health check failed, unable to reach Shiny app on port 8080!' >&2 && exit 1)
 # Run the ShinyCell application
-CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/shinycell', port=3838, host='0.0.0.0')"]
+CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/shinycell', port=8080, host='0.0.0.0')"]
