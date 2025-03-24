@@ -32,8 +32,8 @@ docker buildx build --build-arg SEURAT_RDS=seurat-pbmc_small.rds --build-arg ${p
 # debug any problems, etc.
 docker run --platform linux/amd64 -ti "shinycell:${tag:-v0.1.0_test}" /bin/bash
 # Start up the application,
-# runs on localhost:3838
-docker run --platform linux/amd64 -p 3838:3838 "shinycell:${tag:-v0.1.0_test}"
+# runs on localhost:8080
+docker run --platform linux/amd64 -p 8080:8080 "shinycell:${tag:-v0.1.0_test}"
 
 # Updating tag before pushing to DockerHub
 docker tag "shinycell:${tag:-v0.1.0_test}" "skchronicles/shinycell:${tag:-v0.1.0_test}"
