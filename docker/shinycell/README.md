@@ -36,7 +36,7 @@ docker run --platform linux/amd64 -ti "shinycell:${tag:-v0.1.0_test}" /bin/bash
 docker run --platform linux/amd64 -p 3838:3838 "shinycell:${tag:-v0.1.0_test}"
 
 # Updating tag before pushing to DockerHub
-docker tag shinycell:v0.1.0 "skchronicles/shinycell:${tag:-v0.1.0_test}"
+docker tag "shinycell:${tag:-v0.1.0_test}" "skchronicles/shinycell:${tag:-v0.1.0_test}"
 
 # Check out new tag(s)
 docker image ls
