@@ -119,7 +119,8 @@ COPY build_shinycell.R /opt2/build_shinycell.R
 # Copy the Seurat RDS file
 COPY "${SEURAT_RDS}" /opt2/seurat_object.rds
 RUN Rscript /opt2/build_shinycell.R \
-        /opt2/seurat_object.rds "${PROJECT_ID}"
+        /opt2/seurat_object.rds "${PROJECT_ID}" \
+        && rm /opt2/seurat_object.rds
 
 ################ POST #################
 # Add Dockerfile and export important 
