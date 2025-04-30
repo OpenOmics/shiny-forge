@@ -62,6 +62,7 @@ RUN apt-get update \
         git \
         gzip \
         libfreetype6-dev \
+        libgit2-dev \
         libpng-dev \
         libtiff5-dev \
         libjpeg-dev \
