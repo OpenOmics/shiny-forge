@@ -1,0 +1,455 @@
+#!/usr/bin/env python3
+"""
+shiny-gcp-deploy - CLI tool for deploying Shiny applications to Google Cloud Platform
+
+This tool provides CRUD functionality for managing ShinyCell application deployments on GCP.
+"""
+
+import argparse
+import os
+import json
+import subprocess
+import sys
+import time
+import uuid
+import ipdb
+import shutil
+import urllib3
+from tempfile import TemporaryDirectory
+from dockerfile_parse import DockerfileParser
+from textwrap import dedent
+from typing import Optional
+from src.parse import \
+    read_all, read_one, read_artifacts, get_docker_tag
+from src.config import REGION
+
+
+urllib3.disable_warnings()
+
+
+class ShinyGCPDeploy:
+    """
+    A brief summary of the class and its purpose.
+
+    Longer description of the class, providing more details about its 
+    functionality, usage, and any important considerations.
+    """
+    
+    def __init__(self):
+        """Initialize the deployment tool"""
+        self._ensure_dependencies()
+    
+    def _ensure_dependencies(self):
+        """Ensure all required dependencies are installed"""
+        dependencies = ["gcloud", "docker"]
+        
+        for dep in dependencies:
+            try:
+                subprocess.run([dep, "--version"], 
+                              stdout=subprocess.PIPE, 
+                              stderr=subprocess.PIPE, 
+                              check=False)
+            except FileNotFoundError as e:
+                print(f"Error: {dep} not found. Please install it to use this tool.")
+                if dep == "gcloud":
+                    raise FileNotFoundError("Visit https://cloud.google.com/sdk/docs/install for installation instructions.") from e
+                elif dep == "docker":
+                    raise FileNotFoundError("Visit https://docs.docker.com/get-docker/ for installation instructions.") from e     
+    
+    def _check_gcloud_auth(self):
+        """Check if user is authenticated with gcloud"""
+        try:
+            result = subprocess.run(
+                ["gcloud", "auth", "list", "--filter=status:ACTIVE", "--format=json"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                text=True
+            )
+            accounts = json.loads(result.stdout)
+            if not accounts:
+                print("You need to authenticate with Google Cloud.")
+                subprocess.run(["gcloud", "auth", "login"], check=True)
+        except subprocess.CalledProcessError:
+            print("Error checking authentication. Please run 'gcloud auth login' manually.")
+            sys.exit(1)
+    
+    def _check_gcloud_project(self):
+        """Check if a Google Cloud project is set"""
+        try:
+            result = subprocess.run(
+                ["gcloud", "config", "get-value", "project"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+                text=True
+            )
+            # TODO: enforce that project is openomics-gcp !!!
+            # TODO: check that you're on NIH GCP !!! - gcloud projects get-ancestors openomics-gcp -> org_dict
+            #       383772619975 == org_dict["organization"]
+            project = result.stdout.strip()
+            if project != 'openomics-gcp':
+                subprocess.run(["gcloud", "config", "set", "project", "openomics-gcp"], check=True)
+        except subprocess.CalledProcessError:
+            print("Error checking GCP project. Please set a project with 'gcloud config set project PROJECT_ID'")
+            sys.exit(1)
+    
+    @staticmethod
+    def _check_docker(file):
+        file = os.path.abspath(file)
+        if not os.path.exists(file):
+            raise FileNotFoundError('docker file missing')
+        dockerfile = DockerfileParser()
+        dockerfile.content = open(file).read()
+        build_args = [line['value'] for line in dockerfile.structure if line['instruction'] in ('BUILD-ARG', 'ARG')]
+        return build_args
+    
+    def _add_gcr_to_docker(self):
+        return subprocess.run(
+            ["gcloud", "auth", "configure-docker", "--quiet", "gcr.io"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+    
+    def _setup_tmp_for_docker_build(self, build_args, docker, artifacts_file, tmpdir):
+        artifacts = read_artifacts(artifacts_file)
+        dont_exist = []
+        
+        for arg in artifacts.keys():
+            if arg not in build_args:
+                dont_exist.append(arg)
+        
+        if dont_exist:
+            _c = ', '.join(dont_exist)
+            raise ValueError(f'BUILD-ARGs: {_c} are missing from the artifacts file')
+        
+        new_artifacts = artifacts.copy()
+        for key, val in artifacts.items():
+            if os.path.exists(val):
+                shutil.copy(val, tmpdir)
+            new_artifacts[key] = os.path.basename(val)
+                
+        shutil.copy(docker, tmpdir)
+
+        bargs = []
+        for key, val in new_artifacts.items():
+            bargs.append('--build-arg')
+            bargs.append(f'{key}={val}')
+
+        return bargs
+    
+    def __create_init(self):
+        self._check_gcloud_auth()
+        self._check_gcloud_project()
+        self._add_gcr_to_docker()
+
+    def create(self, 
+               app_name: str,
+               docker: str,
+               artifacts: str,
+               maxcpu: int,
+               maxmem: int,
+               region: str,
+               port: int = 8080):
+        """
+        Create a new Shiny application deployment
+        """
+        self.__create_init()
+        
+        # Get project
+        project_id = subprocess.run(
+            ["gcloud", "config", "get-value", "project"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True
+        ).stdout.strip()
+
+        # Get docker build-args
+        build_args = self._check_docker(docker)
+        
+        # Docker image name
+        image_name_base = f"gcr.io/{project_id}/{app_name}"
+        tag = get_docker_tag(f"gcr.io/{project_id}/{app_name}")
+        image_name = f"{image_name_base}:{tag}"
+        
+        with TemporaryDirectory() as tmpdir:
+            print(f"Building Docker image for {app_name}...")
+            bargs = self._setup_tmp_for_docker_build(build_args, docker, artifacts, tmpdir)
+            # Docker build image
+            subprocess.run(
+                ["docker", "build", "-t", image_name, *bargs, tmpdir],
+                check=True
+            )
+            import ipdb;ipdb.set_trace()
+            # Deploy to GCP artifact registry
+            print(f"Pushing Docker image to Google artifact registry...")
+            subprocess.run(
+                ["docker", "push", image_name],
+                check=True
+            )
+            import ipdb;ipdb.set_trace()
+            # Deploy to Cloud Run
+            print(f"Deploying to Cloud Run...")
+            subprocess.run([
+                "gcloud", "run", "deploy", f"{app_name}",
+                "--image", image_name,
+                "--region", region,
+                "--allow-unauthenticated",
+                "--port", str(port),
+                "--memory", f"{str(maxmem)}Gi",
+                "--cpu", f"{str(maxcpu)}",
+                "--concurrency", "80"
+            ], check=True)
+            
+            # Get the URL
+            url_result = subprocess.run([
+                "gcloud", "run", "services", "describe", f"{app_name}",
+                "--platform", "managed",
+                "--region", region,
+                "--format", "value(status.url)"
+            ], stdout=subprocess.PIPE, check=True, text=True)
+            
+            url = url_result.stdout.strip()
+            
+            
+            print(f"✅ Successfully deployed {app_name} to {url}")
+            
+        return 
+    
+    def read(self, app_name: Optional[str] = None):
+        """Read information about deployed apps"""
+        if app_name is None:
+            read_all()
+        elif app_name:
+            read_one(app_name)
+        return
+    
+    def update(self, app_name: str, app_dir: Optional[str] = None):
+        """Update an existing Shiny application deployment"""
+        self._check_gcloud_auth()
+        
+        if app_name not in self.config["apps"]:
+            print(f"Error: App '{app_name}' not found.")
+            return
+        
+        app = self.config["apps"][app_name]
+        
+        # If app_dir is not provided, use the existing directory
+        if app_dir is None:
+            app_dir = app["directory"]
+        
+        # Verify app directory exists and contains app.R or server.R and ui.R
+        if not os.path.isdir(app_dir):
+            print(f"Error: Directory '{app_dir}' does not exist.")
+            return
+        
+        app_files = os.listdir(app_dir)
+        if not ("app.R" in app_files or ("server.R" in app_files and "ui.R" in app_files)):
+            print(f"Error: Directory '{app_dir}' does not appear to contain a valid Shiny app.")
+            print("Make sure it has app.R or both server.R and ui.R files.")
+            return
+        
+        # Update the app ID for versioning
+        app_id = str(uuid.uuid4())[:8]
+        project_id = subprocess.run(
+            ["gcloud", "config", "get-value", "project"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+            text=True
+        ).stdout.strip()
+        
+        image_name = f"gcr.io/{project_id}/shiny-{app_name}:{app_id}"
+        
+        print(f"Building Docker image for {app_name}...")
+        try:
+            subprocess.run(
+                ["docker", "build", "-t", image_name, app_dir],
+                check=True
+            )
+            
+            print(f"Pushing Docker image to Google Container Registry...")
+            subprocess.run(
+                ["gcloud", "auth", "configure-docker", "gcr.io", "--quiet"],
+                check=True
+            )
+            
+            subprocess.run(
+                ["docker", "push", image_name],
+                check=True
+            )
+            
+            # Update deployment
+            print(f"Updating Cloud Run deployment...")
+            subprocess.run([
+                "gcloud", "run", "services", "update", f"shiny-{app_name}",
+                "--image", image_name,
+                "--platform", "managed",
+                "--region", app["region"]
+            ], check=True)
+            
+            # Update the app configuration
+            self.config["apps"][app_name].update({
+                "id": app_id,
+                "directory": os.path.abspath(app_dir),
+                "image": image_name,
+                "updated": time.strftime("%Y-%m-%d %H:%M:%S")
+            })
+            
+            self._save_config()
+            
+            print(f"✅ Successfully updated {app_name} at {app['url']}")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Error during update: {str(e)}")
+            return
+    
+    def delete(self, app_name: str, force: bool = False):
+        """Delete a Shiny application deployment"""
+        self._check_gcloud_auth()
+        
+        if app_name not in self.config["apps"]:
+            print(f"Error: App '{app_name}' not found.")
+            return
+        
+        app = self.config["apps"][app_name]
+        
+        if not force:
+            confirm = input(f"Are you sure you want to delete '{app_name}'? (y/N): ")
+            if confirm.lower() != 'y':
+                print("Deletion cancelled.")
+                return
+        
+        try:
+            # Delete the Cloud Run service
+            print(f"Deleting Cloud Run service for {app_name}...")
+            subprocess.run([
+                "gcloud", "run", "services", "delete", f"shiny-{app_name}",
+                "--platform", "managed",
+                "--region", app["region"],
+                "--quiet"
+            ], check=True)
+            
+            # Delete the Docker image
+            print(f"Deleting Docker image {app['image']}...")
+            image_name = app['image'].split(':')[0]
+            subprocess.run([
+                "gcloud", "container", "images", "delete", 
+                image_name, "--quiet"
+            ], check=True, stderr=subprocess.PIPE)
+            
+            # Remove from config
+            del self.config["apps"][app_name]
+            self._save_config()
+            
+            print(f"✅ Successfully deleted {app_name}")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Error during deletion: {str(e)}")
+            return
+    
+    def logs(self, app_name: str):
+        """View logs for a Shiny application"""
+        if app_name not in self.config["apps"]:
+            print(f"Error: App '{app_name}' not found.")
+            return
+        
+        app = self.config["apps"][app_name]
+        
+        try:
+            print(f"Fetching logs for {app_name}...")
+            subprocess.run([
+                "gcloud", "logging", "read",
+                f"resource.type=cloud_run_revision AND resource.labels.service_name=shiny-{app_name}",
+                "--limit=50",
+                "--format=json"
+            ], check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"Error fetching logs: {str(e)}")
+            return
+
+
+def main():
+    """
+    Main entry point for the command-line interface
+    """
+    parser = argparse.ArgumentParser(
+        description="CLI tool for deploying Shiny applications to Google Cloud Platform",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog= dedent("""
+                Examples:
+                Deploy a new application:
+                    shiny-gcp-deploy create my-app ./my-app-dir
+
+                List all deployed applications:
+                    shiny-gcp-deploy read
+
+                Get details about a specific application:
+                    shiny-gcp-deploy read my-app
+
+                Update an application:
+                    shiny-gcp-deploy update my-app ./updated-app-dir
+
+                Delete an application:
+                    shiny-gcp-deploy delete my-app
+
+                View application logs:
+                    shiny-gcp-deploy logs my-app
+                """)
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Command to execute")
+    
+    # Create command
+    # TODO: resources for VM
+    # TODO: accept dockerfile uri additionally to static dockerfile
+    create_parser = subparsers.add_parser("create", help="Create a new Shiny application deployment")
+    create_parser.add_argument("project_name", help="Name of the project on GCP")
+    create_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
+    create_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
+    create_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
+    create_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=1, help="Maximum number of CPUs to use for application")
+    create_parser.add_argument("--max-memory", dest='maxmem', required=False, default=2, help="Maximum number of memory (in gigabytes) to use for application")
+    
+    # Read command
+    read_parser = subparsers.add_parser("read", help="Read information about deployed apps")
+    read_parser.add_argument("app_name", nargs="?", default=None, help="Name of the application to get details for")
+    
+    # Update command
+    update_parser = subparsers.add_parser("update", help="Update an existing Shiny application deployment")
+    update_parser.add_argument("app_name", help="Name of the application")
+    update_parser.add_argument("app_dir", nargs="?", help="Directory containing the updated Shiny application")
+    
+    # Delete command
+    delete_parser = subparsers.add_parser("delete", help="Delete a Shiny application deployment")
+    delete_parser.add_argument("app_name", help="Name of the application")
+    delete_parser.add_argument("--force", action="store_true", help="Force deletion without confirmation")
+    
+    # Logs command
+    logs_parser = subparsers.add_parser("logs", help="View logs for a Shiny application")
+    logs_parser.add_argument("app_name", help="Name of the application")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    deployer = ShinyGCPDeploy()
+    
+    if args.command == "create":
+        deployer.create(args.project_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
+    elif args.command == "read":
+        deployer.read(args.app_name)
+    elif args.command == "update":
+        deployer.update(args.app_name, args.app_dir)
+    elif args.command == "delete":
+        deployer.delete(args.app_name, args.force)
+    elif args.command == "logs":
+        deployer.logs(args.app_name)
+
+
+if __name__ == "__main__":
+    main()
