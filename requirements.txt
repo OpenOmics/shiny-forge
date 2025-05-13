@@ -1,1 +1,4 @@
 dockerfile-parse
+ipdb
+packaging
+urllib3
