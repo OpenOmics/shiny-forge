@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-shiny-gcp-deploy - CLI tool for deploying Shiny applications to Google Cloud Platform
+shiny-forge - CLI tool for deploying Shiny applications to Google Cloud Platform
 
 This tool provides CRUD functionality for managing ShinyCell application deployments on GCP.
 """
@@ -20,6 +20,9 @@ from src.parse import \
     read_all, read_one, read_artifacts, \
     get_container_for_service, read_dockerfile, list_apps
 from src.config import REGION, bcolors
+
+# Constants
+CLI_MAIN_ENTRY_POINT = os.path.basename(sys.argv[0])
 
 
 class ShinyGCPDeploy:
@@ -338,23 +341,23 @@ def main():
         epilog= dedent("""
                 Examples:
                 Deploy a new application:
-                    shiny-gcp-deploy create my-app ./my-app-dir
+                    {0} create my-app ./my-app-dir
 
                 List all deployed applications:
-                    shiny-gcp-deploy read
+                    {0} read
 
                 Get details about a specific application:
-                    shiny-gcp-deploy read my-app
+                    {0} read my-app
 
                 Update an application:
-                    shiny-gcp-deploy update my-app ./updated-app-dir
+                    {0} update my-app ./updated-app-dir
 
                 Delete an application:
-                    shiny-gcp-deploy delete my-app
+                    {0} delete my-app
 
                 View application logs:
-                    shiny-gcp-deploy logs my-app
-                """)
+                    {0} logs my-app
+                """.format(CLI_MAIN_ENTRY_POINT))
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -385,7 +388,7 @@ def main():
     # Logs command
     logs_parser = subparsers.add_parser("logs", help="View logs for a Shiny application")
     logs_parser.add_argument("app_name", help="Name of the application")
-    logs_parser.add_argument("lastn", required=False, default=None, dest='last', help="Limit log entries to the last N entries")
+    logs_parser.add_argument("lastn", help="Limit log entries to the last N entries")
     
     args = parser.parse_args()
     
@@ -404,7 +407,7 @@ def main():
     elif args.command == "delete":
         deployer.delete(args.app_name)
     elif args.command == "logs":
-        deployer.logs(args.app_name, args.last)
+        deployer.logs(args.app_name, args.lastn)
 
 
 if __name__ == "__main__":
