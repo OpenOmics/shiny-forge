@@ -4,7 +4,6 @@ import json
 import ipdb
 import os
 from .config import REGION
-from packaging.version import Version, InvalidVersion
 from dockerfile_parse import DockerfileParser
 from typing import Dict, List, Optional, Union
 
@@ -102,21 +101,21 @@ def read_dockerfile(file):
     return build_args
 
 
-def get_docker_tag(image):
-    proc = ['gcloud', 'container', 'images', 'list-tags', '--format="json"', image]
-    outs = run_and_grab(proc, True)
-    tags = []
-    if len(outs) > 0:
-        for tag in outs[0]['tags']:
-            try:
-                _t = Version(tag)
-                tags.append(_t)
-            except InvalidVersion:
-                continue
-    if tags:
-        latest_v = sorted(tags)[-1].base_version.split('.')
-        latest_minor = int(latest_v[2]) + 1
-        latest_tag = f"{latest_v[0]}.{latest_v[1]}.{latest_minor}"
-    else:
-        latest_tag = '0.0.1'
-    return latest_tag
+# def get_docker_tag(image):
+#     proc = ['gcloud', 'container', 'images', 'list-tags', '--format="json"', image]
+#     outs = run_and_grab(proc, True)
+#     tags = []
+#     if len(outs) > 0:
+#         for tag in outs[0]['tags']:
+#             try:
+#                 _t = Version(tag)
+#                 tags.append(_t)
+#             except InvalidVersion:
+#                 continue
+#     if tags:
+#         latest_v = sorted(tags)[-1].base_version.split('.')
+#         latest_minor = int(latest_v[2]) + 1
+#         latest_tag = f"{latest_v[0]}.{latest_v[1]}.{latest_minor}"
+#     else:
+#         latest_tag = '0.0.1'
+#     return latest_tag
