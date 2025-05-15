@@ -12,17 +12,21 @@ import subprocess
 import sys
 import shutil
 import urllib3
-import logging
+import certifi
 from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import Optional
 from src.parse import \
-    read_all, read_one, read_artifacts, \
+    read_all, read_one, read_artifacts, run_and_grab, \
     get_container_for_service, read_dockerfile, list_apps
 from src.config import REGION, bcolors
 
 # Constants
 CLI_MAIN_ENTRY_POINT = os.path.basename(sys.argv[0])
+http = urllib3.PoolManager(
+    cert_reqs="CERT_REQUIRED",
+    ca_certs=certifi.where()
+)
 
 
 class ShinyGCPDeploy:
@@ -175,20 +179,27 @@ class ShinyGCPDeploy:
             bargs = self._setup_tmp_for_docker_build(build_args, docker, artifacts, tmpdir)
             # Docker build image
             subprocess.run(
-                ["docker", "build", "-t", image_name, *bargs, tmpdir],
+                [
+                    "docker", "build", 
+                    "--progress=plain",
+                    "--platform", "linux/amd64", 
+                    "-t", image_name.lower(), 
+                    *bargs, 
+                    tmpdir
+                ],
                 check=True
             )
             # Deploy to GCP artifact registry
             print(f"Pushing Docker image to Google artifact registry...")
             subprocess.run(
-                ["docker", "push", image_name],
+                ["docker", "push", image_name.lower()],
                 check=True
             )
             # Deploy to Cloud Run
             print(f"Deploying to Cloud Run...")
             subprocess.run([
                 "gcloud", "run", "deploy", f"{app_name}",
-                "--image", image_name,
+                "--image", image_name.lower(),
                 "--region", region,
                 "--allow-unauthenticated",
                 "--port", str(port),
@@ -197,13 +208,13 @@ class ShinyGCPDeploy:
                 "--concurrency", "80"
             ], check=True)
             # Get the URL
-            url_result = subprocess.run([
-                "gcloud", "run", "services", "describe", f"{app_name}",
-                "--platform", "managed",
+            url_result = run_and_grab([
+                "gcloud", "run", "services",
+                "describe", f"{app_name}",
                 "--region", region,
-                "--format", "value(status.url)"
-            ], stdout=subprocess.PIPE, check=True, text=True)
-            url = url_result.stdout.strip()
+                "--format=\"json\""
+            ], True)
+            url = json.loads(url_result['metadata']['annotations']['run.googleapis.com/urls'])[0]
 
         print(f"✅ Successfully deployed {app_name} to {url}")
             
@@ -250,27 +261,27 @@ class ShinyGCPDeploy:
             bargs = self._setup_tmp_for_docker_build(build_args, docker, artifacts, tmpdir)
             # Docker build image
             subprocess.run(
-                ["docker", "build", "-t", image_name, *bargs, tmpdir],
+                ["docker", "build", "--platform", "linux/amd64", "-t", image_name.lower(), *bargs, tmpdir],
                 check=True
             )
             # Deploy to GCP artifact registry
             print(f"Pushing Docker image to Google artifact registry...")
             subprocess.run(
-                ["docker", "push", image_name],
+                ["docker", "push", image_name.lower()],
                 check=True
             )
             # Update deployment
             print(f"Updating Cloud Run deployment...")
             subprocess.run([
                 "gcloud", "run", "services", "update", f"{app_name}",
-                "--image", image_name,
+                "--image", image_name.lower(),
                 "--allow-unauthenticated",
                 "--port", str(port),
                 "--memory", f"{str(maxmem)}Gi",
                 "--cpu", f"{str(maxcpu)}",
                 "--region", REGION
             ], check=True)
-             # Get the URL
+            # Get the URL
             url_result = subprocess.run([
                 "gcloud", "run", "services", "describe", f"{app_name}",
                 "--region", region,
@@ -324,7 +335,6 @@ class ShinyGCPDeploy:
                 "gcloud", "logging", "read",
                 f"resource.type=cloud_run_revision AND resource.labels.service_name={app_name}",
                 last_limit,
-                "--format=json"
             ], check=True)
         except subprocess.CalledProcessError as e:
             print(f"Error fetching logs: {str(e)}")
@@ -366,12 +376,12 @@ def main():
     # TODO: resources for VM
     # TODO: accept dockerfile uri additionally to static dockerfile
     create_parser = subparsers.add_parser("create", help="Create a new Shiny application deployment")
-    create_parser.add_argument("project_name", help="Name of the project on GCP")
+    create_parser.add_argument("app_name", help="Name of the application to deploy on the `openomics-gcp` project")
     create_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
     create_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
     create_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
-    create_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=1, help="Maximum number of CPUs to use for application")
-    create_parser.add_argument("--max-memory", dest='maxmem', required=False, default=2, help="Maximum number of memory (in gigabytes) to use for application")
+    create_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=1, help="Maximum number of CPUs to use for application (Default 1 CPU)")
+    create_parser.add_argument("--max-memory", dest='maxmem', required=False, default=2, help="Maximum number of memory (in gigabytes) to use for application (Default 2GiB)")
     
     # Read command
     read_parser = subparsers.add_parser("read", help="Read information about deployed apps")
@@ -388,7 +398,7 @@ def main():
     # Logs command
     logs_parser = subparsers.add_parser("logs", help="View logs for a Shiny application")
     logs_parser.add_argument("app_name", help="Name of the application")
-    logs_parser.add_argument("lastn", help="Limit log entries to the last N entries")
+    logs_parser.add_argument("--lastn", dest="lastn", help="Limit log entries to the last N entries")
     
     args = parser.parse_args()
     
@@ -399,7 +409,7 @@ def main():
     deployer = ShinyGCPDeploy()
     
     if args.command == "create":
-        deployer.create(args.project_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
+        deployer.create(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
     elif args.command == "read":
         deployer.read(args.app_name)
     elif args.command == "update":

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 import subprocess
 import json
-import ipdb
 import os
-from .config import REGION
 from dockerfile_parse import DockerfileParser
-from typing import Dict, List, Optional, Union
+from typing import List, Union
+from .config import REGION
+
 
 ###
 ###  > Objective: encapsulate all parsing related helpers and utilities
 ###
-
 
 ###
 ###  >> Section: functions for executing and parsing structured file formats
@@ -36,7 +35,7 @@ def read_artifacts(file):
 def run_and_grab(proc: List, out: Union[List, bool]):
     args = {'stderr': subprocess.PIPE}
     env = os.environ.copy()
-    env['PYTHONWARNINGS'] = "ignore:Unverified HTTPS request"
+    env['PYTHONWARNINGS'] = "ignore"
     args['env'] = env
     if out:
         args['stdout'] = subprocess.PIPE
@@ -100,22 +99,3 @@ def read_dockerfile(file):
     build_args = [line['value'] for line in dockerfile.structure if line['instruction'] in ('BUILD-ARG', 'ARG')]
     return build_args
 
-
-# def get_docker_tag(image):
-#     proc = ['gcloud', 'container', 'images', 'list-tags', '--format="json"', image]
-#     outs = run_and_grab(proc, True)
-#     tags = []
-#     if len(outs) > 0:
-#         for tag in outs[0]['tags']:
-#             try:
-#                 _t = Version(tag)
-#                 tags.append(_t)
-#             except InvalidVersion:
-#                 continue
-#     if tags:
-#         latest_v = sorted(tags)[-1].base_version.split('.')
-#         latest_minor = int(latest_v[2]) + 1
-#         latest_tag = f"{latest_v[0]}.{latest_v[1]}.{latest_minor}"
-#     else:
-#         latest_tag = '0.0.1'
-#     return latest_tag

@@ -25,8 +25,22 @@ cran_packages <- c(
     "readr", 
     "future", 
     "RColorBrewer",
-    "devtools"
+    "devtools",
+    "Seurat",
+    "remotes",
+    "DT",
+    "BiocManager",
+    "shinyhelper",
+    "argparse",
+    "ggdendro",
+    "hdf5r",
+    "magrittr",
+    "shiny",
+    "shinyhelper",
+    "ggpubr",
+    "ggrepel"
 )
+
 
 # Install missing CRAN packages 
 install.packages(
@@ -56,3 +70,6 @@ for (p in bioc_packages){
         BiocManager::install(p, ask = FALSE, update = FALSE, Ncpus = use_ncpus)
     }
 }
+
+# not on CRAN
+remotes::install_github('satijalab/seurat-wrappers')

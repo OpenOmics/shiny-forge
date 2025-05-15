@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 
 # Install from Github via devtools
-library(ShinyCell)
+library(ShinyCell2)
+library(Seurat)
 
 # Misc helper functions 
 err <- function(...){cat(sprintf(...), sep='\n', file=stderr())}
@@ -26,9 +27,11 @@ if (length(args) != 2) {
     fatal("Example: build_shinycell.R /path/to/seurat_obj.rds 'NCBR-0: ShinyCell'")
 } 
 
-rds_file     <- args[1]     # RDS file created with saveRDS containing a seurat object
-project_name <- args[2]     # Project name, becomes title of the app, example: NCBR-34
-    
+rds_file      <- args[1]     # RDS file created with saveRDS containing a seurat object
+project_name  <- args[2]     # Project name, becomes title of the app, example: NCBR-34
+shiny_app_dir <- file.path("/srv/shiny-server/shinycell2")
+dir.create(shiny_app_dir, showWarnings = FALSE)
+
 # Read in file with seurat object
 seurat_obj <- readRDS(rds_file)
 # Sanity check: Does the RDS file
@@ -42,15 +45,19 @@ if (class(seurat_obj) == "SeuratObject"){
 # Create ShinyCell config file
 # to make the application
 shinycell_config <- createConfig(seurat_obj)
-    
+
 # Build the Shiny Application,
 # in the default location for
 # Shiny/Posit server: i.e.
 # /srv/shiny-server/${app_name}
-makeShinyApp(
-    seurat_obj,
-    shinycell_config,
-    gene.mapping = TRUE,
+makeShinyFiles(
+    seurat_obj, 
+    shinycell_config, 
+    shiny.dir = shiny_app_dir,
+    shiny.prefix = "sc1"
+)
+makeShinyCodes(
     shiny.title = project_name,
-    shiny.dir = "/srv/shiny-server/shinycell"
+    shiny.dir = shiny_app_dir,
+    shiny.prefix = "sc1"
 )

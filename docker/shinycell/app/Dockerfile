@@ -1,5 +1,5 @@
 FROM gcr.io/openomics-gcp/shinycell-base:latest
-ADD Dockerfile /opt2/deploy-shinycell.app.dockerfile
+ADD Dockerfile /opt2/shinycell.app.dockerfile
 ############### ARGS ################
 # RDS file containing a Seurat object
 ARG SEURAT_RDS

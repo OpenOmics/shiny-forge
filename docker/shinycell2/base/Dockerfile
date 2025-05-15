@@ -101,9 +101,8 @@ RUN mkdir -p /opt2/ \
 # https://github.com/SGDDNB/ShinyCell
 # Copy R script to install packages
 COPY install_packages.R /opt2/install_packages.R
-RUN cd /opt2 \
-        && Rscript /opt2/install_packages.R \
-        && Rscript -e 'devtools::install_github("the-ouyang-lab/ShinyCell2")'
+RUN cd /opt2 && Rscript /opt2/install_packages.R 
+RUN Rscript -e 'devtools::install_github("the-ouyang-lab/ShinyCell2")'
 COPY git_installs.sh /opt2/work/git_installs.sh
 RUN cd /opt2/work; ./git_installs.sh
 COPY build_shinycell.R /opt2/build_shinycell.R
@@ -111,12 +110,14 @@ COPY build_shinycell.R /opt2/build_shinycell.R
 ################ POST #################
 # Add Dockerfile and export important 
 # environment variables
-ADD Dockerfile /opt2/deploy-shinycell2.base.dockerfile
-RUN chmod -R a+rX /opt2 /srv/shiny-server
+ADD Dockerfile /opt2/shinycell2.base.dockerfile
+RUN chmod -R a+rX /opt2 /srv/shiny-server; chmod -R g+wX /srv/shiny-server
 ENV PATH="/opt2/which-2.21/bin:${PATH}"
 WORKDIR /data2
 
 # Create a non-root user, shinyuser,
 # to run the Shiny application
 RUN useradd -ms /bin/bash shinyuser
+RUN usermod -a -G shiny shinyuser
+RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
