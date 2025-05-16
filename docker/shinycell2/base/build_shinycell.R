@@ -34,6 +34,11 @@ dir.create(shiny_app_dir, showWarnings = FALSE)
 
 # Read in file with seurat object
 seurat_obj <- readRDS(rds_file)
+seurat_obj[["RNA3"]] <- as(object = seurat_obj[["RNA"]], Class = "Assay")
+DefaultAssay(seurat_obj) <- "RNA3"
+seurat_obj[["RNA"]] <- NULL
+seurat_obj <- RenameAssays(object = seurat_obj, RNA3 = 'RNA')
+
 # Sanity check: Does the RDS file
 # actually contain a seurat object?
 if (class(seurat_obj) == "SeuratObject"){
@@ -54,7 +59,7 @@ makeShinyFiles(
     seurat_obj, 
     shinycell_config, 
     shiny.dir = shiny_app_dir,
-    shiny.prefix = "sc1"
+    shiny.prefix = "sc1",
 )
 makeShinyCodes(
     shiny.title = project_name,

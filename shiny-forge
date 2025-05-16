@@ -376,7 +376,7 @@ def main():
     # TODO: resources for VM
     # TODO: accept dockerfile uri additionally to static dockerfile
     create_parser = subparsers.add_parser("create", help="Create a new Shiny application deployment")
-    create_parser.add_argument("app_name", help="Name of the application to deploy on the `openomics-gcp` project")
+    create_parser.add_argument("app_name", type=lambda _str: str(_str).lower(), help="Name of the application to deploy on the `openomics-gcp` project")
     create_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
     create_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
     create_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
