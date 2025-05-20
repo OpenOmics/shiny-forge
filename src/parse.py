@@ -94,8 +94,7 @@ def read_dockerfile(file):
     file = os.path.abspath(file)
     if not os.path.exists(file):
         raise FileNotFoundError('docker file missing')
-    dockerfile = DockerfileParser()
-    dockerfile.content = open(file).read()
+    dockerfile = DockerfileParser(fileobj=open(file), cache_content=True)
     build_args = [line['value'] for line in dockerfile.structure if line['instruction'] in ('BUILD-ARG', 'ARG')]
     return build_args
 

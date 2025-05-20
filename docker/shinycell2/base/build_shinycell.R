@@ -60,6 +60,7 @@ makeShinyFiles(
     shinycell_config, 
     shiny.dir = shiny_app_dir,
     shiny.prefix = "sc1",
+    chunkSize = 2500,
 )
 makeShinyCodes(
     shiny.title = project_name,

@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
-import subprocess
-import json
-import ipdb
-from typing import Dict, List, Optional, Union
+import os
 
 ###
 # utilities file for parsing json formatted outputs by gcloud
 ###
 
 REGION = "us-east4"
+
+PROJECT = 'OpenOmics-GCP'
+
+ENV = os.environ.copy()
+ENV['PYTHONWARNINGS'] = "ignore:Unverified HTTPS request"
 
 class bcolors:
     HEADER = '\033[95m'

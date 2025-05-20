@@ -2,3 +2,6 @@ dockerfile-parse
 ipdb
 packaging
 certifi
+google-cloud-storage
+google-cloud-build
+pyyaml
