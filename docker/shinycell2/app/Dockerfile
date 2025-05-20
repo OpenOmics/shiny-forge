@@ -1,5 +1,6 @@
 FROM gcr.io/openomics-gcp/shinycell2-base:latest
 ADD Dockerfile /opt2/shinycell2.app.dockerfile
+ENV R_MAX_VSIZE=64000000000
 ############### ARGS ################
 # RDS file containing a Seurat object
 ARG SEURAT_RDS
