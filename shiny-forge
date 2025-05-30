@@ -242,14 +242,6 @@ class ShinyGCPDeploy:
             check=True,
             text=True
         ).stdout.strip()
-
-        # Get docker build-args
-        build_args = read_dockerfile(docker)
-        
-        # Docker image name
-        image_name_base = f"gcr.io/{project_id}/{app_name}"
-        tag = 'latest'
-        image_name = f"{image_name_base}:{tag}"
         
         cloud_build(project_id, app_name, docker, artifacts)
             

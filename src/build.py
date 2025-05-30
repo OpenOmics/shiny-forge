@@ -4,13 +4,15 @@ import os
 import datetime
 import uuid
 import shutil
-import yaml
+import ast
 from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import List, Dict
 from google.cloud import storage
-from .config import PROJECT, bcolors, ENV, BASE_CLOUD_BUILD_STRUCTURE, BASE_CLOUD_BUILD_STEP
-from .parse import read_artifacts, save_yaml
+from .config import PROJECT, bcolors, ENV, \
+    BASE_CLOUD_BUILD_STRUCTURE, BASE_CLOUD_BUILD_STEP, \
+    REGION
+from .parse import read_artifacts, save_yaml, run_and_grab
 
 
 ###
@@ -177,7 +179,7 @@ def cloud_build(
             'run', 'deploy', app_name, 
             '--allow-unauthenticated', # allow for unauthenticated access online
             '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest', 
-            '--region', 'us-east4'
+            '--region', REGION
         ],
         'waitFor': ['push-latest']
     }
@@ -195,15 +197,51 @@ def cloud_build(
     # 6. Execute cloud build + run
     subprocess.run([
         'gcloud', 'builds', 'submit', 
-        '--region=us-east4',
+        f'--region={REGION}',
         '--config', dockerbuild_yaml,
-        '--polling-interval=200',
+        '--polling-interval=50',
         '--timeout=1h'
     ], cwd=docker_dir.name, env=ENV, check=True)
+
+    # 7. Ensure unauthenticated access to the recently deployed application
+    # NOTE: this cannot be run as a step in the cloud build workflow
+    #       as the service account that executes the cloud building steps
+    #       does not have the appropriate permissions to set unauthenticated access
+    #       therefore it needs to be added locally at the command line which should
+    #       be authenticated as a regular user
+    subprocess.run([
+        'gcloud', 'run', 'services', 'add-iam-policy-binding', app_name,
+        '--member=allUsers', '--role=roles/run.invoker', f'--region={REGION}'
+    ], env=ENV, check=True)
     
     # 7. Clean up temporary artifacts and destroys the temporary bucket after build
     docker_dir.cleanup()
     delete_gcs_bucket(project_id=project_name, bucket_name=bucket_hash)
 
-    return
+    # 8. Get the URL for the deployed application
+    all_urls = subprocess.check_output(
+                f'gcloud run services describe {app_name} --region={REGION} --format="value(metadata.annotations)"',
+                shell=True
+               )
+    
+    all_urls = all_urls.decode('utf-8').split(';')
+    region_url = None
+    for metadata in all_urls:
+        if metadata.startswith('run.googleapis.com/urls'):
+            region_url = metadata.split('=')[1]
+
+    if region_url:
+        region_url = ast.literal_eval(region_url)
+        final_url = None
+        for url in region_url:
+            if url.endswith(f'.{REGION}.run.app'):
+                final_url = url
+                break
+    
+    if not final_url:
+        print(bcolors.WARNING + f'Unable to capture application URL! Execute: `gcloud run services describe {app_name}` to get URL' + bcolors.ENDC)
+    else:
+        print(bcolors.OKGREEN + f'Shiny application deployed! URL: ' + bcolors.UNDERLINE + final_url + bcolors.ENDC)
+
+    return final_url
     
