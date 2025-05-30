@@ -22,3 +22,17 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
+
+BASE_CLOUD_BUILD_STRUCTURE = {
+    'steps': [],
+    'images': [],
+    'options': {
+        'pool': {'name': 'projects/openomics-gcp/locations/us-east4/workerPools/openomics-cloud-build'},
+    }
+}
+
+BASE_CLOUD_BUILD_STEP = {
+    'name': '',
+    'id': '',
+    'args': []
+}

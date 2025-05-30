@@ -2,6 +2,8 @@
 import subprocess
 import json
 import os
+import yaml
+import argparse
 from dockerfile_parse import DockerfileParser
 from typing import List, Union
 from .config import REGION
@@ -80,6 +82,16 @@ def list_apps():
     return [app['metadata']['name'] for app in get_apps]
 
 
+def app_name_valid(name):
+    if len(name) > 63:
+        raise argparse.ArgumentTypeError('App name must be shorter than 63 characters! (GCP requirement)')
+    name_no_dash = name.replace('-', '')
+    if not name_no_dash.isalnum():
+        raise argparse.ArgumentTypeError('App name must only contain lowercase alphanumeric characters and/or dashes! (GCP requirement)')
+    if not name.islower():
+        raise argparse.ArgumentTypeError('App name must only contain lowercase characters! (GCP requirement)')
+    return name
+
 def get_container_for_service(service_name):
     proc = ["gcloud", "run", "services", "describe", f"--region={REGION}", "--format=\"json\"", service_name]
     outs = run_and_grab(proc, True)
@@ -98,3 +110,25 @@ def read_dockerfile(file):
     build_args = [line['value'] for line in dockerfile.structure if line['instruction'] in ('BUILD-ARG', 'ARG')]
     return build_args
 
+
+###
+###  >> Section: functions for executing and parsing yaml artifacts
+### 
+
+def save_yaml(content, filepath):
+    # Custom representer to handle None values and formatting
+    def represent_none(self, data):
+        return self.represent_scalar('tag:yaml.org,2002:null', '')
+        
+    yaml.add_representer(type(None), represent_none)
+    
+    # Generate YAML with proper formatting
+    return yaml.dump(
+        content,
+        open(filepath, 'w'),
+        default_flow_style=False,
+        indent=2,
+        sort_keys=False,
+        allow_unicode=True,
+        explicit_start=True
+    )

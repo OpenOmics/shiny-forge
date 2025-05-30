@@ -18,7 +18,8 @@ from textwrap import dedent
 from typing import Optional
 from src.parse import \
     read_all, read_one, read_artifacts, run_and_grab, \
-    get_container_for_service, read_dockerfile, list_apps
+    get_container_for_service, read_dockerfile, list_apps, \
+    app_name_valid
 from src.build import build_setup, cloud_build
 from src.config import REGION, ENV, bcolors
 
@@ -420,7 +421,7 @@ def main():
     # Create command
     # TODO: resources for VM
     create_parser = subparsers.add_parser("create", help="Create a new Shiny application deployment")
-    create_parser.add_argument("app_name", type=lambda _str: str(_str).lower(), help="Name of the application to deploy on the `openomics-gcp` project")
+    create_parser.add_argument("app_name", type=app_name_valid, help="Name of the application to deploy on the `openomics-gcp` project")
     create_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
     create_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
     create_parser.add_argument("--cloud", action='store_true', default=False, required=False, help="File containing the mapping between Dockerfile")
