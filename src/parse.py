@@ -8,7 +8,7 @@ import git
 import hashlib
 from dockerfile_parse import DockerfileParser
 from typing import List, Union
-from .config import REGION
+from .config import REGION, ENV
 
 
 ###
@@ -61,7 +61,7 @@ def read_all():
     ]
     proc = f"gcloud run services list --region={REGION} " + \
            f"--format=\"table({','.join(meta_data)})\""
-    subprocess.run(proc, shell=True)
+    subprocess.run(proc, env=ENV, shell=True)
     return 
 
 
