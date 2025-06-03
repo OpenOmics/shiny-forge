@@ -4,6 +4,8 @@ import json
 import os
 import yaml
 import argparse
+import git
+import hashlib
 from dockerfile_parse import DockerfileParser
 from typing import List, Union
 from .config import REGION
@@ -44,13 +46,22 @@ def run_and_grab(proc: List, out: Union[List, bool]):
     
     result = subprocess.run(proc, **args)
     if getattr(result, 'stdout', None):
-        return json.loads(result.stdout)
+        try:
+            return json.loads(result.stdout)
+        except:
+            return result.stdout
     else:
         return result.stdout
 
 def read_all():
-    proc = ["gcloud", "run", "services", "list", f"--region={REGION}"]
-    outs = run_and_grab(proc, False)
+    meta_data = [   
+        'name', 'labels.seurat_rds', 
+        "labels.commit_sha,metadata.annotations.'serving.knative.dev/creator':label='DEPLOYED_BY'",
+        "metadata.creationTimestamp.date('%m-%d-%Y'):label='DEPLOYED_ON'"
+    ]
+    proc = f"gcloud run services list --region={REGION} " + \
+           f"--format=\"table({','.join(meta_data)})\""
+    subprocess.run(proc, shell=True)
     return 
 
 
@@ -132,3 +143,32 @@ def save_yaml(content, filepath):
         allow_unicode=True,
         explicit_start=True
     )
+
+
+### 
+###
+###
+def get_sha1_hash(file_path):
+    """Calculate SHA1 hash of a file."""
+    sha1_hash = hashlib.sha1()
+    with open(file_path, 'rb') as file:
+        # Read the file in chunks to handle large files efficiently
+        for chunk in iter(lambda: file.read(4096), b""):
+            sha1_hash.update(chunk)
+    return sha1_hash.hexdigest()
+
+
+def get_hash_labels(artifacts_file):
+    # get git hash
+    repo = git.Repo(search_parent_directories=True)
+    sha = repo.head.object.hexsha
+    # get artifacts hash
+    artifacts = {k: v for k, v in read_artifacts(artifacts_file).items() if os.path.exists(os.path.abspath(v))}
+    artifact_hashes = {k: get_sha1_hash(v) for k, v in artifacts.items()}
+    labels = f"COMMIT_SHA={sha}".lower()
+    for artifact_name, hash in artifact_hashes.items():
+        # should always start with COMMIT_SHA
+        if len(artifact_name) > 63:
+            raise ValueError(f"GCP cloud run label ({artifact_name}) cannot be longer than 63 characters")
+        labels += f",{artifact_name}={hash}".lower()
+    return labels

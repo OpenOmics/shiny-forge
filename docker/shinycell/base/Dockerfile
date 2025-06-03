@@ -88,7 +88,7 @@ RUN ln -sf /usr/bin/python3 /usr/bin/python
 # does not have. The gnu verison is backwards 
 # compatiable with the ubunutu version.
 RUN mkdir -p /opt2/ \
-        && wget --no-check-certificate -O /opt2/which.tar.gz https://ftp.gnu.org/gnu/which/which-2.21.tar.gz \
+        && wget --no-check-certificate -O /opt2/which.tar.gz http://ftp.gnu.org/gnu/which/which-2.21.tar.gz \
         && tar -xvf /opt2/which.tar.gz -C /opt2/ \
         && rm /opt2/which.tar.gz \
         && cd /opt2/which-2.21/ \

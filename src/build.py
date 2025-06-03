@@ -12,7 +12,7 @@ from google.cloud import storage
 from .config import PROJECT, bcolors, ENV, \
     BASE_CLOUD_BUILD_STRUCTURE, BASE_CLOUD_BUILD_STEP, \
     REGION
-from .parse import read_artifacts, save_yaml, run_and_grab
+from .parse import read_artifacts, save_yaml, get_hash_labels
 
 
 ###
@@ -156,13 +156,6 @@ def cloud_build(
     }
 
     # > 4b. Push container to registry
-    cloudbuild_docker_push_001 = {
-        'name': 'gcr.io/cloud-builders/docker', 
-        'args': ['push', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1'],
-        'id': 'push-001',
-        'waitFor': [docker_build_step_id]
-    }
-
     cloudbuild_docker_push_latest = {
         'name': 'gcr.io/cloud-builders/docker', 
         'args': ['push', f'gcr.io/$PROJECT_ID/{app_name}:latest'],
@@ -171,6 +164,7 @@ def cloud_build(
     }
 
     # > 4c. Deploy to Google Cloud Run and start
+    hash_labels = get_hash_labels(artifacts)
     cloudbuild_cloudrun_deploy = {
         'name': 'gcr.io/google.com/cloudsdktool/cloud-sdk',
         'id': 'deploy-cloud-run',
@@ -178,7 +172,8 @@ def cloud_build(
         'args': [
             'run', 'deploy', app_name, 
             '--allow-unauthenticated', # allow for unauthenticated access online
-            '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest', 
+            '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
+            '--labels', hash_labels,
             '--region', REGION
         ],
         'waitFor': ['push-latest']
@@ -186,13 +181,10 @@ def cloud_build(
 
     full_build_yaml = BASE_CLOUD_BUILD_STRUCTURE.copy()
     full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step, 
-                                cloudbuild_docker_push_001, cloudbuild_docker_push_latest, 
-                                cloudbuild_cloudrun_deploy]
-    full_build_yaml['images'] = [f'gcr.io/$PROJECT_ID/{app_name}:latest', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1']
+                                cloudbuild_docker_push_latest, cloudbuild_cloudrun_deploy]
+    full_build_yaml['images'] = [f'gcr.io/$PROJECT_ID/{app_name}:latest']
     dockerbuild_yaml = os.path.join(docker_dir.name, 'cloudbuild.yaml')
-
     save_yaml(full_build_yaml, dockerbuild_yaml)
-    save_yaml(full_build_yaml, "/Users/routsongrm/git/OpenOmics/shiny-forge/test.yaml")
 
     # 6. Execute cloud build + run
     subprocess.run([
@@ -231,9 +223,9 @@ def cloud_build(
             region_url = metadata.split('=')[1]
 
     if region_url:
-        region_url = ast.literal_eval(region_url)
+        region_urls = ast.literal_eval(region_url)
         final_url = None
-        for url in region_url:
+        for url in region_urls:
             if url.endswith(f'.{REGION}.run.app'):
                 final_url = url
                 break

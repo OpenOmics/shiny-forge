@@ -4,8 +4,8 @@
 FROM rocker/shiny:4.4.3
 
 ############### ABOUT ###############
-# Depedencies of ShinyCell:
-# • https://github.com/SGDDNB/ShinyCell
+# Depedencies of ShinyCell2:
+# • https://github.com/the-ouyang-lab/ShinyCell2
 # @TLDR:
 #    • R already satisfied: 4.4.3
 #        • data.table

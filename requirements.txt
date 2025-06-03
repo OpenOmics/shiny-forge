@@ -5,3 +5,4 @@ certifi
 google-cloud-storage
 google-cloud-build
 pyyaml
+gitpython

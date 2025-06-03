@@ -34,10 +34,6 @@ dir.create(shiny_app_dir, showWarnings = FALSE)
 
 # Read in file with seurat object
 seurat_obj <- readRDS(rds_file)
-seurat_obj[["RNA3"]] <- as(object = seurat_obj[["RNA"]], Class = "Assay")
-DefaultAssay(seurat_obj) <- "RNA3"
-seurat_obj[["RNA"]] <- NULL
-seurat_obj <- RenameAssays(object = seurat_obj, RNA3 = 'RNA')
 
 # Sanity check: Does the RDS file
 # actually contain a seurat object?
@@ -47,9 +43,35 @@ if (class(seurat_obj) == "SeuratObject"){
     fatal(" └── Please create a new RDS file with a seurat object!")
 }
 
+unsupported_assays <- c("HTO")
+
+for (assay in unsupported_assays) {
+    if (assay %in% names(seurat_obj@assays)) {
+        cat(paste0(assay, 'unsupported assay removed!', sep=' '))
+        seurat_obj[[assay]] <- NULL
+    }
+}
+
 # Create ShinyCell config file
 # to make the application
 shinycell_config <- createConfig(seurat_obj)
+
+remove_metas <- c()
+
+for (config_label in shinycell_config$ID) {
+    for (assay in unsupported_assays) {
+        if (grepl(assay, config_label, fixed = TRUE)) {
+            remove_metas <- c(remove_metas, config_label)
+        }
+    }
+}
+
+for (label in remove_metas) {
+    if (label %in% shinycell_config$ID) {
+        cat(paste0('Removing ', label, ' meta.data from seurat object'))
+        delMeta(shinycell_config, label)
+    }
+}
 
 # Build the Shiny Application,
 # in the default location for
@@ -60,7 +82,7 @@ makeShinyFiles(
     shinycell_config, 
     shiny.dir = shiny_app_dir,
     shiny.prefix = "sc1",
-    chunkSize = 2500,
+    chunkSize = 5000,
 )
 makeShinyCodes(
     shiny.title = project_name,
