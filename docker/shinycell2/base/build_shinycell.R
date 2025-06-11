@@ -43,6 +43,22 @@ if (class(seurat_obj) == "SeuratObject"){
     fatal(" └── Please create a new RDS file with a seurat object!")
 }
 
+gex.assay = names(seurat_obj@assays)
+if (requireNamespace("SeuratObject", quietly = TRUE)){
+    gex.assay = c(SeuratObject::DefaultAssay(seurat_obj), setdiff(gex.assay, SeuratObject::DefaultAssay(seurat_obj)))
+}
+gex.assay = setdiff(gex.assay, "peaks")
+if(!(gex.slot[1] %in% names(seurat_objj@assays[[gex.assay[1]]]@layers))){
+    stop(paste0("gex.slot not found in gex.assay. ", "Are layers joined? run obj <- JoinLayers(obj)"))
+}
+
+defGenes = Seurat::VariableFeatures(seurat_objj)[1:10]
+if(is.na(defGenes[1])){
+    warning(paste0("Variable genes for seurat object not found! Have you ",
+                    "ran `FindVariableFeatures` or `SCTransform`?"))
+    defGenes = rownames(seurat_objj)[1:10]
+}
+
 unsupported_assays <- c("HTO")
 
 for (assay in unsupported_assays) {
@@ -54,7 +70,7 @@ for (assay in unsupported_assays) {
 
 # Create ShinyCell config file
 # to make the application
-shinycell_config <- createConfig(seurat_obj)
+shinycell_config <- createConfig(seurat_obj, maxLevels=100)
 
 remove_metas <- c()
 
