@@ -428,6 +428,12 @@ def main():
     # Update command
     update_parser = subparsers.add_parser("update", help="Update an existing Shiny application deployment")
     update_parser.add_argument("app_name", help="Name of the application")
+    update_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
+    update_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
+    update_parser.add_argument("--cloud", action='store_true', default=False, required=False, help="File containing the mapping between Dockerfile")
+    update_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
+    update_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=2, help="Maximum number of CPUs to use for application (Default 2 CPU)")
+    update_parser.add_argument("--max-memory", dest='maxmem', required=False, default=4, help="Maximum number of memory (in gigabytes) to use for application (Default 4GiB)")
     
     # Delete command
     delete_parser = subparsers.add_parser("delete", help="Delete a Shiny application deployment")
@@ -454,7 +460,7 @@ def main():
     elif args.command == "read":
         deployer.read(args.app_name)
     elif args.command == "update":
-        deployer.update(args.app_name)
+        deployer.update(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
     elif args.command == "delete":
         deployer.delete(args.app_name)
     elif args.command == "logs":
