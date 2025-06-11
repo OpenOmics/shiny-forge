@@ -69,7 +69,7 @@ for (config_label in shinycell_config$ID) {
 for (label in remove_metas) {
     if (label %in% shinycell_config$ID) {
         cat(paste0('Removing ', label, ' meta.data from seurat object'))
-        delMeta(shinycell_config, label)
+        shinycell_config <- delMeta(shinycell_config, label)
     }
 }
 
