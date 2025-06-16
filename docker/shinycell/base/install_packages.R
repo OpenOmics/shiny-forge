@@ -32,7 +32,8 @@ cran_packages <- c(
     "readr",
     "reticulate",
     "shiny",
-    "shinyhelper"
+    "shinyhelper",
+    "optparse"
 )
 
 # Install missing CRAN packages 
