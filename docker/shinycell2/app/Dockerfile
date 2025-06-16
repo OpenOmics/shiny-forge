@@ -7,14 +7,21 @@ ARG SEURAT_RDS
 # Project identifer, becomes title of
 # Shiny application
 ARG PROJECT_ID
+ARG DEFAULT_RED=""
+ARG RM_META=""
+ARG MAX_LEVELS=""
 ############## SETUP ################
 # Copy the Seurat RDS file
-COPY "${SEURAT_RDS}" /opt2/seurat_object.rds
+COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds
 USER root
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
 RUN Rscript /opt2/build_shinycell.R \
-        /opt2/seurat_object.rds "${PROJECT_ID}" \
+        --obj /opt2/seurat_object.rds \
+        --proj "${PROJECT_ID}" \
+        --rmmeta "${RM_META}" \
+        --defred "${DEFAULT_RED}" \
+        --maxlevels "${MAX_LEVELS}" \
         && rm /opt2/seurat_object.rds
 # Listen on port for incoming connections
 EXPOSE 8080
