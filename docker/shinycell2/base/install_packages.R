@@ -14,6 +14,7 @@ use_ncpus <- max(parallel::detectCores()-2, 2)
 # Install via: 
 #   install.packages('packageName', repos='http://cran.r-project.org')
 cran_packages <- c(
+    "optparse",
     "data.table", 
     "Matrix", 
     "hdf5r", 

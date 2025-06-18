@@ -146,7 +146,7 @@ def save_yaml(content, filepath):
 
 
 ### 
-###
+### >> Section: functions for file hashing utilities
 ###
 def get_sha1_hash(file_path):
     """Calculate SHA1 hash of a file."""
@@ -172,3 +172,29 @@ def get_hash_labels(artifacts_file):
             raise ValueError(f"GCP cloud run label ({artifact_name}) cannot be longer than 63 characters")
         labels += f",{artifact_name}={hash}".lower()
     return labels
+
+
+### 
+### >> Section: validating memory and cpus inputs from end user
+###
+def validate_resource(cpus, mem):
+    """
+    GCP required minimum CPUs
+    Memory	                Minimum CPUs required
+    128 MiB	                .083 vCPU
+    256 MiB	                .167 vCPU
+    512 MiB	                .333 vCPU
+    1 GiB	                .583 vCPU
+    2 GiB	                1 vCPU
+    More than 4 GiB	        2 vCPU
+    More than 8 GiB	        4 vCPU
+    More than 16 GiB	    6 vCPU
+    More than 24 GiB	    8 vCPU
+    """
+    halfmem = mem//2
+    if halfmem < cpus:
+        raise ResourceWarning(
+            'GCP requires a roughly 2x memory (GiB) to vCPUs (cores), ' + 
+            f'the resources entered do not achieve that: {str(cpus)} vCPUs, {str(mem)} GiB memory'
+        )
+    return

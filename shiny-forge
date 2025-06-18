@@ -20,7 +20,7 @@ from src.parse import \
     read_all, read_one, read_artifacts, run_and_grab, \
     get_container_for_service, read_dockerfile, list_apps, \
     app_name_valid
-from src.build import build_setup, cloud_build
+from src.build import cloud_build
 from src.config import REGION, ENV, bcolors
 
 # Constants
@@ -149,14 +149,14 @@ class ShinyGCPDeploy:
         return
 
     ### CREATE ###
-    def create(self, 
-               app_name: str,
-               docker: str,
-               artifacts: str,
-               maxcpu: int,
-               maxmem: int,
-               region: str,
-               port: int = 8080):
+    def create(
+            self, 
+            app_name: str,
+            docker: str,
+            artifacts: str,
+            maxcpu: int,
+            maxmem: int
+        ):
         """
         Create a new Shiny application deployment
         """
@@ -202,9 +202,9 @@ class ShinyGCPDeploy:
             subprocess.run([
                 "gcloud", "run", "deploy", f"{app_name}",
                 "--image", image_name.lower(),
-                "--region", region,
+                "--region", REGION,
                 "--allow-unauthenticated",
-                "--port", str(port),
+                "--port", '8080',
                 "--memory", f"{str(maxmem)}Gi",
                 "--cpu", f"{str(maxcpu)}",
                 "--concurrency", "80"
@@ -213,7 +213,7 @@ class ShinyGCPDeploy:
             url_result = run_and_grab([
                 "gcloud", "run", "services",
                 "describe", f"{app_name}",
-                "--region", region,
+                "--region", REGION,
                 "--format=\"json\""
             ], True)
             url = json.loads(url_result['metadata']['annotations']['run.googleapis.com/urls'])[0]
@@ -222,14 +222,14 @@ class ShinyGCPDeploy:
             
         return 
 
-    def cloud_create(self, 
-               app_name: str,
-               docker: str,
-               artifacts: str,
-               maxcpu: int,
-               maxmem: int,
-               region: str,
-               port: int = 8080):
+    def cloud_create(
+        self, 
+        app_name: str,
+        docker: str,
+        artifacts: str,
+        maxcpu: int,
+        maxmem: int
+    ):
         """
         Create a new Shiny application deployment
         """
@@ -243,7 +243,14 @@ class ShinyGCPDeploy:
             text=True
         ).stdout.strip()
         
-        cloud_build(project_id, app_name, docker, artifacts)
+        cloud_build(
+            project_id, 
+            app_name, 
+            docker, 
+            artifacts, 
+            cpu = str(maxcpu), 
+            mem = str(maxmem)
+        )
             
         return 
     
@@ -257,14 +264,14 @@ class ShinyGCPDeploy:
         return
     
     ### UPDATE ###
-    def update(self, 
-               app_name: str,
-               docker: str,
-               artifacts: str,
-               maxcpu: int,
-               maxmem: int,
-               region: str,
-               port: int = 8080):
+    def update(
+            self, 
+            app_name: str,
+            docker: str,
+            artifacts: str,
+            maxcpu: int,
+            maxmem: int
+        ):
         """
         Update an existing Shiny application deployment
         """
@@ -288,33 +295,23 @@ class ShinyGCPDeploy:
             bargs = self._setup_tmp_for_docker_build(build_args, docker, artifacts, tmpdir)
             # Docker build image
             subprocess.run([
-                "docker", 
-                "build", 
-                "--platform", 
-                "linux/amd64", 
-                "-t", 
-                image_name.lower(), 
-                *bargs, 
-                tmpdir
+                "docker", "build", 
+                "--platform", "linux/amd64", 
+                "-t", image_name.lower(), 
+                *bargs, tmpdir
             ], env=ENV, check=True)
             # Deploy to GCP artifact registry
             print(f"Pushing Docker image to Google artifact registry...")
             subprocess.run([
-                "docker", 
-                "push", 
-                image_name.lower()
+                "docker", "push", image_name.lower()
             ], env=ENV, check=True)
             # Update deployment
             print(f"Updating Cloud Run deployment...")
             subprocess.run([
-                "gcloud", 
-                "run", 
-                "services", 
-                "update", 
-                f"{app_name}",
+                "gcloud", "run", "services", "update", f"{app_name}",
                 "--image", image_name.lower(),
                 "--allow-unauthenticated",
-                "--port", str(port),
+                "--port", '8080',
                 "--memory", f"{str(maxmem)}Gi",
                 "--cpu", f"{str(maxcpu)}",
                 "--region", REGION
@@ -322,11 +319,37 @@ class ShinyGCPDeploy:
             # Get the URL
             url_result = subprocess.run([
                 "gcloud", "run", "services", "describe", f"{app_name}",
-                "--region", region,
+                "--region", REGION,
                 "--format", "value(status.url)"
             ], stdout=subprocess.PIPE, env=ENV, check=True, text=True)
             url = url_result.stdout.strip()
         print(f"✅ Successfully updated {app_name} at {url}")
+
+
+    def cloud_update(
+            self, 
+            app_name: str,
+            docker: str,
+            artifacts: str,
+            maxcpu: int,
+            maxmem: int
+        ):
+        """
+        Create a new Shiny application deployment
+        """
+        # Get project
+        project_id = subprocess.run(
+            ["gcloud", "config", "get-value", "project"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ENV,
+            check=True,
+            text=True
+        ).stdout.strip()
+        
+        cloud_build(project_id, app_name, docker, artifacts, mem=str(maxmem), cpu=str(maxcpu), update=True)
+            
+        return 
 
     ### DELETE ###        
     def delete(self, 
@@ -417,9 +440,9 @@ def main():
     create_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
     create_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
     create_parser.add_argument("--cloud", action='store_true', default=False, required=False, help="File containing the mapping between Dockerfile")
-    create_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
     create_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=2, help="Maximum number of CPUs to use for application (Default 2 CPU)")
     create_parser.add_argument("--max-memory", dest='maxmem', required=False, default=4, help="Maximum number of memory (in gigabytes) to use for application (Default 4GiB)")
+    
     
     # Read command
     read_parser = subparsers.add_parser("read", help="Read information about deployed apps")
@@ -431,7 +454,6 @@ def main():
     update_parser.add_argument("docker", help="Dockerfile or to use for shiny application")
     update_parser.add_argument("artifacts", help="File containing the mapping between Dockerfile")
     update_parser.add_argument("--cloud", action='store_true', default=False, required=False, help="File containing the mapping between Dockerfile")
-    update_parser.add_argument("--region", dest='region', required=False, default=REGION, help="File containing the mapping between Dockerfile")
     update_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=2, help="Maximum number of CPUs to use for application (Default 2 CPU)")
     update_parser.add_argument("--max-memory", dest='maxmem', required=False, default=4, help="Maximum number of memory (in gigabytes) to use for application (Default 4GiB)")
     
@@ -454,13 +476,16 @@ def main():
     
     if args.command == "create":
         if args.cloud:
-            deployer.cloud_create(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
+            deployer.cloud_create(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem)
         else:
-            deployer.create(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
+            deployer.create(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem)
+    elif args.command == "update":
+        if args.cloud:
+            deployer.cloud_update(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem)
+        else:
+            deployer.update(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem)
     elif args.command == "read":
         deployer.read(args.app_name)
-    elif args.command == "update":
-        deployer.update(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem, args.region)
     elif args.command == "delete":
         deployer.delete(args.app_name)
     elif args.command == "logs":

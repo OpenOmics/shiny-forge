@@ -114,11 +114,12 @@ COPY build_shinycell.R /opt2/build_shinycell.R
 # Add Dockerfile and export important 
 # environment variables
 ADD Dockerfile /opt2/deploy-shinycell.base.dockerfile
-RUN chmod -R a+rX /opt2 /srv/shiny-server
+RUN mkdir -p /srv/shiny-server; chmod -R a+rX /opt2 /srv/shiny-server
 ENV PATH="/opt2/which-2.21/bin:${PATH}"
 WORKDIR /data2
 
 # Create a non-root user, shinyuser,
 # to run the Shiny application
 RUN useradd -ms /bin/bash shinyuser
+RUN chown -R shinyuser:shiny /srv/shiny-server
 USER shinyuser

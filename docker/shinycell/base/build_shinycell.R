@@ -89,8 +89,8 @@ if (length(missing_args) > 0) {
 }
 # Read in file with seurat object
 seurat_obj <- readRDS(rds_file)
-cat()
-if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "") {
+
+if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "" | opt$meta.to.rm == "NA") {
     rm.meta             <- NULL
 } else {
     if ("," %in% opt$meta.to.rm) {
@@ -99,7 +99,7 @@ if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "") {
         rm.meta         <- c(trimws(gsub("[\r\n]", "", opt$meta.to.rm)))
     }
 }
-if (is.null(opt$default.reduction) | is.na(opt$max.levels) | opt$default.reduction == "") {
+if (is.null(opt$default.reduction) | is.na(opt$default.reduction) | opt$default.reduction == "" | opt$default.reduction == "NA") {
     default.reduction   <- NULL
 } else {
     if (opt$default.reduction %in% names(seurat_obj@reductions)) {
@@ -109,19 +109,17 @@ if (is.null(opt$default.reduction) | is.na(opt$max.levels) | opt$default.reducti
         fatal(paste0('`', opt$default.reduction, '` reduction not found in seurat object!'))
     }
 }
-if (!is.null(opt$max.levels) | !is.na(opt$max.levels) | opt$max.level == "") {
+if (!is.null(opt$max.levels) | !is.na(opt$max.levels) | opt$max.level == "" | opt$max.level == "NA") {
     max.levels          <- opt$max.levels
 } else {
     max.levels          <- 50
 }
 
-
-
 config_params <- list()
 if (!is.null(max.levels)) {
     config_params$maxLevels = max.levels
 }
-metas = names(seurat_obj@meta.data)
+metas = colnames(seurat_obj@meta.data)
 newmetas <- metas
 if (!is.null(rm.meta)) {
     newmetas = c()
@@ -150,10 +148,10 @@ if (!is.null(default.reduction)) {
     app_params$default.dimred = default.reduction
 }
 
+dir.create("/srv/shiny-server", showWarnings = FALSE)
 app_params$gene.mapping = TRUE
 app_params$shiny.title = project_name
 app_params$shiny.dir = "/srv/shiny-server/shinycell/"
-app_params$shiny.dir = "shinyApp"
 
 do.call(
     makeShinyApp,

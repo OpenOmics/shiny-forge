@@ -82,15 +82,17 @@ opt <- parse_args(OptionParser(option_list=option_list))
 # setup opt parse variables for downstream 
 # usage into shinycell2
 rds_file                <- opt$object
+seurat_obj              <- readRDS(rds_file)
 project_name            <- opt$project
 required_args           <- c("object", "project")
-missing_args            <- required_args[sapply(required_args, function(x) is.null(opt1[[x]]))]
+missing_args            <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
+
 if (length(missing_args) > 0) {
     cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
-    print_help(opt_parser1)
+    print_help(opt)
     quit(status = 1)
 }
-if (is.null(opt$meta.to.rm) | opt$meta.to.rm == "") {
+if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "" | opt$meta.to.rm == "NA") {
     rm.meta             <- NULL
 } else {
     if ("," %in% opt$meta.to.rm) {
@@ -99,12 +101,17 @@ if (is.null(opt$meta.to.rm) | opt$meta.to.rm == "") {
         rm.meta         <- c(trimws(gsub("[\r\n]", "", opt$meta.to.rm)))
     }
 }
-if (is.null(opt$default.reduction) | opt$default.reduction == "") {
+if (is.null(opt$default.reduction) | is.na(opt$default.reduction) | opt$default.reduction == "" | opt$default.reduction == "NA") {
     default.reduction   <- NULL
 } else {
-    default.reduction   <- opt$default.reduction
+    if (opt$default.reduction %in% names(seurat_obj@reductions)) {
+        this_key = seurat_obj@reductions[[opt$default.reduction]]@key
+        default.reduction  <- c(paste0(this_key, '1'), paste0(this_key, '2'))
+    } else {
+        fatal(paste0('`', opt$default.reduction, '` reduction not found in seurat object!'))
+    }
 }
-if (!is.null(opt$max.levels) | opt$max.level == "") {
+if (!is.null(opt$max.levels) | !is.na(opt$max.levels) | opt$max.level == "" | opt$max.level == "NA") {
     max.levels          <- opt$max.levels
 } else {
     max.levels          <- NULL
@@ -112,36 +119,12 @@ if (!is.null(opt$max.levels) | opt$max.level == "") {
 shiny_app_dir           <- file.path("/srv/shiny-server/shinycell2")
 dir.create(shiny_app_dir, showWarnings = FALSE)
 
-# Read in file with seurat object
-seurat_obj <- readRDS(rds_file)
-
 # Sanity check: Does the RDS file
 # actually contain a seurat object?
 if (class(seurat_obj) == "SeuratObject"){
     # It doesn't look like it...
     err("Fatal Error: Failed to provide an RDS file with a Seuart Object.")
     fatal(" └── Please create a new RDS file with a seurat object!")
-}
-
-# Sanity check: 
-#   - Are layers (`JoinLayers` been run) joined?
-#   - Does "data" layer exist?
-#   - Has `FindVariableFeatures` been run?
-# These are all things that ShinyCell2 checks as well, see:
-#   https://github.com/the-ouyang-lab/ShinyCell2/blob/33bfc8ba232f0c829b6b23181cb83089d58e7879/R/makeShinyFilesGEX.R#L56
-gex.slot = "data"
-gex.assay = names(seurat_obj@assays)
-if (requireNamespace("SeuratObject", quietly = TRUE)){
-    gex.assay = c(SeuratObject::DefaultAssay(seurat_obj), setdiff(gex.assay, SeuratObject::DefaultAssay(seurat_obj)))
-}
-gex.assay = setdiff(gex.assay, "peaks")
-if(!(gex.slot[1] %in% names(seurat_obj@assays[[gex.assay[1]]]@layers))){
-    stop(paste0("gex.slot not found in gex.assay. ", "Are layers joined? run obj <- JoinLayers(obj)"))
-}
-defGenes = Seurat::VariableFeatures(seurat_obj)[1:10]
-if(is.na(defGenes[1])){
-    warning(paste0("Variable genes for seurat object not found! Have you ",
-                    "ran `FindVariableFeatures` or `SCTransform`?"))
 }
 
 # Remove unsupported assay
@@ -183,6 +166,8 @@ for (config_label in shinycell_config$ID) {
     }
 }
 
+shinycell_config <- delMeta(shinycell_config, remove_metas)
+
 # Build the Shiny Application,
 # in the default location for
 # Shiny/Posit server: i.e.
@@ -196,8 +181,8 @@ files_params <- list(
 )
 
 if (!is.null(default.reduction)) {
-    files_params$dimred.to.use = default.reduction
-    files_params$default.dimred = c(paste0(default.reduction, '1'), paste0(default.reduction, '2'))
+    files_params$dimred.to.use = opt$default.reduction
+    files_params$default.dimred = default.reduction
 }
 
 do.call(

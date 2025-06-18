@@ -26,8 +26,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 def build_setup():
     ## For slow upload speed
-    storage.blob._DEFAULT_CHUNKSIZE = 5242880 # 1024 * 1024 B * 2 = 5 MB
-    storage.blob._MAX_MULTIPART_SIZE = 5242880 
+    # storage.blob._DEFAULT_CHUNKSIZE = 5242880 # 1024 * 1024 B * 2 = 5 MB
+    # storage.blob._MAX_MULTIPART_SIZE = 5242880 
     subprocess.run(['gcloud', 'config', 'set', 'billing/quota_project', PROJECT.lower()], env=ENV, check=True)
     subprocess.run(['gcloud', 'config', 'set', 'storage/parallel_composite_upload_enabled', 'True'], check=True)
     return
@@ -126,32 +126,34 @@ def cloud_build(
         project_name: str,
         app_name: str,
         docker: str,
-        artifacts: str
+        artifacts: str,
+        mem: str,
+        cpu: str,
+        update: bool = False
     ):
-    # initialize could build
+    # initialize cloud build
     build_setup()
 
     # 1. Creates a temporary GCS bucket based on project ID hash
     formatted_date = datetime.date.today().strftime("%Y-%m-%d")
     bucket_hash = f"{formatted_date}_{str(uuid.uuid4())}"
     bucket = create_gcs_bucket(project_id=project_name, bucket_name=bucket_hash)
-
-    # 2. Uploads large file artifacts to the temporary bucket
+    
+    # 2a. Copy docker file and small docker artifacts (!= large docker artifacts) to temporary location
     bargs = read_artifacts(artifacts)
     files_to_upload_to_gcs = [_value for _, _value in bargs.items() if os.path.exists(os.path.abspath(_value))]
-    uploaded = upload_to_gcs(bucket_hash, files_to_upload_to_gcs)
-
-    # 3. Copy docker file and small docker artifacts (!= large docker artifacts) to temporary location
     docker_dir = silo_docker(docker, files_to_upload_to_gcs)
 
     with ExceptionHook(suppress=False) as hook:
-        # setup an exeception hook to remove temporary artifacts 
-        # on build failure or success
+        # 2b. setup an exeception hook to remove temporary artifacts on build failure or success
         hook.set_cleanup_resources(
             temp_dir=docker_dir.name,
             google_bucket_name=bucket_hash,
             google_project_id=project_name
         )
+
+        # 3. Uploads large file artifacts to the temporary bucket
+        uploaded = upload_to_gcs(bucket_hash, files_to_upload_to_gcs)
 
         # 4. Create a Cloud Build configuration
         # > 4a. Steps to download all the pre-requisite bucket files
@@ -160,14 +162,21 @@ def cloud_build(
         # > 4b. Steps to build actual docker container
         docker_build_step_id = f'build-docker-{app_name}'
         cloudbuild_build_docker_step = {
-            'name': 'gcr.io/cloud-builders/docker', 
-            'args': ['build', '-t', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1', '-t', f'gcr.io/$PROJECT_ID/{app_name}:latest', 
-                        *mk_build_args(bargs), "."],
+            'name': 'gcr.io/cloud-builders/docker',
+            'env': 'DOCKER_BUILDKIT=1',
+            'args': [
+                'build', 
+                '-t', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1', 
+                '-t', f'gcr.io/$PROJECT_ID/{app_name}:latest',
+                "--platform", "linux/amd64",
+                *mk_build_args(bargs),
+                "."
+            ],
             'id': docker_build_step_id,
             'waitFor': build_waitfor,
         }
-
-        # > 4b. Push container to registry
+        
+        # > 4c. Push container to registry
         cloudbuild_docker_push_latest = {
             'name': 'gcr.io/cloud-builders/docker', 
             'args': ['push', f'gcr.io/$PROJECT_ID/{app_name}:latest'],
@@ -175,21 +184,46 @@ def cloud_build(
             'waitFor': [docker_build_step_id]
         }
 
-        # > 4c. Deploy to Google Cloud Run and start
+        # > 4d. Deploy to Google Cloud Run and start
         hash_labels = get_hash_labels(artifacts)
+        cloudbuild_deploy_id = 'deploy-cloud-run'
         cloudbuild_cloudrun_deploy = {
             'name': 'gcr.io/google.com/cloudsdktool/cloud-sdk',
-            'id': 'deploy-cloud-run',
+            'id': cloudbuild_deploy_id,
             'entrypoint': 'gcloud',
             'args': [
-                'run', 'deploy', app_name, 
+                'run', 
+                'deploy', 
+                app_name, 
                 '--allow-unauthenticated', # allow for unauthenticated access online
                 '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                 '--labels', hash_labels,
-                '--region', REGION
+                '--region', REGION,
+                '--memory', f'{mem}Gi',
+                '--cpu', f'{cpu}'
             ],
             'waitFor': ['push-latest']
         }
+
+        if update:
+            cloudbuild_deploy_id = 'update-cloud-run'
+            cloudbuild_cloudrun_deploy = {
+                'name': 'gcr.io/google.com/cloudsdktool/cloud-sdk',
+                'id': cloudbuild_deploy_id,
+                'entrypoint': 'gcloud',
+                'args': [
+                    'run',
+                    'services',
+                    'update',
+                    app_name,
+                    '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
+                    '--labels', hash_labels,
+                    '--region', REGION,
+                    '--memory', f'{mem}Gi',
+                    '--cpu', f'{cpu}'
+                ],
+                'waitFor': ['push-latest']
+            }
 
         full_build_yaml = BASE_CLOUD_BUILD_STRUCTURE.copy()
         full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step, 
@@ -198,7 +232,7 @@ def cloud_build(
         dockerbuild_yaml = os.path.join(docker_dir.name, 'cloudbuild.yaml')
         save_yaml(full_build_yaml, dockerbuild_yaml)
 
-        # 6. Execute cloud build + run
+        # 5. Execute cloud build + run
         subprocess.run([
             'gcloud', 'builds', 'submit', 
             f'--region={REGION}',
@@ -207,7 +241,7 @@ def cloud_build(
             '--timeout=1h'
         ], cwd=docker_dir.name, env=ENV, check=True)
 
-        # 7. Ensure unauthenticated access to the recently deployed application
+        # 6. Ensure unauthenticated access to the recently deployed application
         # NOTE: this cannot be run as a step in the cloud build workflow
         #       as the service account that executes the cloud building steps
         #       does not have the appropriate permissions to set unauthenticated access
@@ -223,7 +257,7 @@ def cloud_build(
                     f'gcloud run services describe {app_name} --region={REGION} --format="value(metadata.annotations)"',
                     shell=True
                 )
-    
+
         all_urls = all_urls.decode('utf-8').split(';')
         region_url = None
         for metadata in all_urls:

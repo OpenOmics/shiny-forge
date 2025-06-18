@@ -7,9 +7,9 @@ ARG SEURAT_RDS
 # Project identifer, becomes title of
 # Shiny application
 ARG PROJECT_ID
-ARG DEFAULT_RED=""
-ARG RM_META=""
-ARG MAX_LEVELS=""
+ARG DEFAULT_RED="NA"
+ARG RM_META="NA"
+ARG MAX_LEVELS="NA"
 ############## SETUP ################
 # Copy the Seurat RDS file
 COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds
