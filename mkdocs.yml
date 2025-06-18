@@ -6,6 +6,8 @@ theme:
     - navigation.instant.prefetch
 nav:
   - Home: index.md
+  - How To Use: howto.md
+  - Supported apps: support.md
   - Reference: 
     - Parsing: reference/parsing.md
     - Building: reference/building.md
