@@ -1,0 +1,16 @@
+site_name: shiny-forge
+theme:
+  name: "material"
+  features:
+    - navigation.instant
+    - navigation.instant.prefetch
+nav:
+  - Home: index.md
+  - Reference: 
+    - Parsing: reference/parsing.md
+    - Building: reference/building.md
+    - Config: reference/config.md
+    - Hooks: reference/hooks.md
+plugins:
+- search
+- mkdocstrings
