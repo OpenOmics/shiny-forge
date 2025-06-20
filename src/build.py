@@ -199,6 +199,7 @@ def cloud_build(
                 '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                 '--labels', hash_labels,
                 '--region', REGION,
+                '--timeout', '3600',
                 '--memory', f'{mem}Gi',
                 '--cpu', f'{cpu}'
             ],
@@ -218,6 +219,7 @@ def cloud_build(
                     app_name,
                     '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                     '--labels', hash_labels,
+                    '--timeout', '3600',
                     '--region', REGION,
                     '--memory', f'{mem}Gi',
                     '--cpu', f'{cpu}'

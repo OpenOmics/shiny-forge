@@ -81,7 +81,7 @@ opt <- parse_args(OptionParser(option_list=option_list))
 
 # setup opt parse variables for downstream 
 # usage into shinycell2
-rds_file                <- opt$object
+rds_file                <- normalizePath(opt$object)
 seurat_obj              <- readRDS(rds_file)
 project_name            <- opt$project
 required_args           <- c("object", "project")
@@ -172,17 +172,30 @@ shinycell_config <- delMeta(shinycell_config, remove_metas)
 # in the default location for
 # Shiny/Posit server: i.e.
 # /srv/shiny-server/${app_name}
+chunk <- as.integer(nrow(seurat_obj@meta.data)*0.10)
+if (chunk < 10) {
+    chunk <- 10
+}
 files_params <- list(
     seurat_obj,
     shinycell_config,  
     shiny.dir = shiny_app_dir,
     shiny.prefix = "sc1",
-    chunkSize = as.integer(nrow(seurat_obj@meta.data)*0.10)
+    chunkSize = chunk
 )
 
 if (!is.null(default.reduction)) {
-    files_params$dimred.to.use = opt$default.reduction
     files_params$default.dimred = default.reduction
+    to.start <- c(opt$default.reduction)
+    to.add <- c()
+    for (red in names(seurat_obj@reductions)) {
+        if (red != opt$default.reduction) {
+            to.add <- c(to.add, red)
+        }
+    }
+    to.use <- to.start
+    to.use <- c(to.use, to.add)
+    files_params$dimred.to.use = to.use
 }
 
 do.call(
