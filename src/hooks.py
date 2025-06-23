@@ -3,7 +3,7 @@ import logging
 import shutil
 from google.cloud import storage
 from contextlib import contextmanager
-from typing import Generator, Optional, Callable
+from typing import Generator, Optional, Callable, Any
 from pathlib import Path
 
 
@@ -131,9 +131,10 @@ class ExceptionHook:
                 logging.error(f"Failed to clean up Google Cloud bucket {self.google_bucket_name}: {e}")
 
 @contextmanager
-def handle_exceptions_with_cleanup(handler=None, 
-                                 suppress=False,
-                                 cleanup_on_exception=True) -> Generator[ExceptionHook, None, None]:
+def handle_exceptions_with_cleanup(
+    handler : Any = None, 
+    suppress : bool = False,
+    cleanup_on_exception : bool = True) -> Generator[ExceptionHook, None, None]:
     """
     Context manager function for exception handling with automatic cleanup
     
