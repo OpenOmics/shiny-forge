@@ -13,6 +13,9 @@ import sys
 import shutil
 import urllib3
 import certifi
+import socket
+import re
+import logging
 from tempfile import TemporaryDirectory
 from textwrap import dedent
 from typing import Optional
@@ -64,7 +67,11 @@ class ShinyGCPDeploy:
                 if dep == "gcloud":
                     raise FileNotFoundError("Visit https://cloud.google.com/sdk/docs/install for installation instructions.") from e
                 elif dep == "docker":
-                    raise FileNotFoundError("Visit https://docs.docker.com/get-docker/ for installation instructions.") from e     
+                    hostname = socket.gethostname()
+                    if not re.match(r"cn[0-9]{4}", hostname):
+                        raise FileNotFoundError("Visit https://docs.docker.com/get-docker/ for installation instructions.") from e
+                    else:
+                        logging.info('Docker does not exist, but this is a biowulf compute node')
     
     def _check_gcloud_auth(self):
         """Check if user is authenticated with gcloud"""
