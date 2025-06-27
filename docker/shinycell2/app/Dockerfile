@@ -10,6 +10,7 @@ ARG PROJECT_ID
 ARG DEFAULT_RED="NA"
 ARG RM_META="NA"
 ARG MAX_LEVELS="NA"
+ARG SEURAT_ASSAY="NA"
 ############## SETUP ################
 # Copy the Seurat RDS file
 COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds

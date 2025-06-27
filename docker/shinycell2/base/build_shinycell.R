@@ -70,6 +70,18 @@ option_list <- list(
             "1->120 (120 factors/levels), and max levels is 50 this metadata",
             "will be discarded.", sep=" "
         )
+    ),
+    make_option(
+        c("-a", "--assay"),
+        type = "character",
+        dest = "assay.to.use",
+        metavar = "ASSAY_NAME [str]",
+        default = NULL,
+        help = paste(
+            "The assay to utilize for ShinyCell2 web application.",
+            "Comma delimit multiple assays in a single string e.g.: RNA,spatial,ATAC,etc.", 
+            "This will default to the first assay in the Seurat object (object@assays)", sep=" "
+        )
     )
 )
 
@@ -99,6 +111,15 @@ if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "" | opt
         rm.meta         <- unlist(strsplit(opt$meta.to.rm, ",", fixed = TRUE))
     } else {
         rm.meta         <- c(trimws(gsub("[\r\n]", "", opt$meta.to.rm)))
+    }
+}
+if (is.null(opt$assay.to.use) | is.na(opt$assay.to.use) | opt$assay.to.use == "" | opt$assay.to.use == "NA") {
+    assay.to.use             <- NULL
+} else {
+    if ("," %in% opt$assay.to.use) {
+        assay.to.use         <- unlist(strsplit(opt$assay.to.use, ",", fixed = TRUE))
+    } else {
+        assay.to.use         <- c(trimws(gsub("[\r\n]", "", opt$assay.to.use)))
     }
 }
 if (is.null(opt$default.reduction) | is.na(opt$default.reduction) | opt$default.reduction == "" | opt$default.reduction == "NA") {
@@ -183,6 +204,9 @@ files_params <- list(
 if (!is.null(default.reduction)) {
     files_params$dimred.to.use = opt$default.reduction
     files_params$default.dimred = default.reduction
+}
+if (!is.null(assay.to.use)) {
+    files_params$assay = assay.to.use
 }
 
 do.call(
