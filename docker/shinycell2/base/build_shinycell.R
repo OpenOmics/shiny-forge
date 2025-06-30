@@ -94,7 +94,7 @@ option_list <- list(
             "memory consumption use this key word argument to pass in",
             "the tar.gz path with files", sep=" "
         )
-    ),
+    )
 )
 
 # get command line options, if help 
