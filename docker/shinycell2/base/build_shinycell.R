@@ -112,12 +112,13 @@ required_args           <- c("object", "project")
 missing_args            <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
 shiny_app_dir           <- file.path("/srv/shiny-server/shinycell2")
 
-if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files != "" | opt$meta.to.rm == "NA") {
-    if (length(missing_args) > 0) {
-        cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
-        print_help(opt)
-        quit(status = 1)
-    }
+if (length(missing_args) > 0) {
+    cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
+    print_help(opt)
+    quit(status = 1)
+}
+
+if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | opt$shiny.files == "NA") {
     if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "" | opt$meta.to.rm == "NA") {
         rm.meta             <- NULL
     } else {
@@ -227,9 +228,9 @@ if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files != "" | 
         files_params
     )
 } else {
-    cat('Shiny tar.gz provided - skipping object setup')
-    if (!grepl("\\.tar\\.gz$", file_path, ignore.case = TRUE) & !grepl("\\.tgz$", file_path, ignore.case = TRUE)) {
-        fatal("Error: File is not a .tar.gz or .tgz file:", file_path, "\nFile must have .tar.gz or .tgz extension\n")
+    cat('Shiny files tar.gz provided - skipping object setup')
+    if (!grepl("\\.tar\\.gz$", opt$shiny.files, ignore.case = TRUE) & !grepl("\\.tgz$", opt$shiny.files, ignore.case = TRUE)) {
+        fatal("Error: File is not a .tar.gz or .tgz file:", opt$shiny.files, "\nFile must have .tar.gz or .tgz extension\n")
     }
     cat("Extracting", opt$shiny.files, "to", shiny_app_dir, "\n")
     untar(tarfile = opt$shiny.files, exdir = shiny_app_dir, compressed=TRUE)
