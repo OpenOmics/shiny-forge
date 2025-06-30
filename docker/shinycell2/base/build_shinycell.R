@@ -112,7 +112,9 @@ required_args           <- c("object", "project")
 missing_args            <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
 shiny_app_dir           <- file.path("shinycell2")
 
-if (!is.null(opt$shiny.files) & !is.na(opt$shiny.files) & opt$shiny.files != "" & opt$meta.to.rm == "NA") {
+fatal(opt$shiny.files)
+
+if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files != "" | opt$meta.to.rm == "NA") {
     if (length(missing_args) > 0) {
         cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
         print_help(opt)
