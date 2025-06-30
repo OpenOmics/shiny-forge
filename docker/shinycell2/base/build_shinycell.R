@@ -228,12 +228,12 @@ if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | 
         files_params
     )
 } else {
-    cat('Shiny files tar.gz provided - skipping object setup')
+    cat("Shiny files tar.gz provided - skipping object setup\n")
     if (!grepl("\\.tar\\.gz$", opt$shiny.files, ignore.case = TRUE) & !grepl("\\.tgz$", opt$shiny.files, ignore.case = TRUE)) {
         fatal("Error: File is not a .tar.gz or .tgz file:", opt$shiny.files, "\nFile must have .tar.gz or .tgz extension\n")
     }
     cat("Extracting", opt$shiny.files, "to", shiny_app_dir, "\n")
-    untar(tarfile = opt$shiny.files, exdir = shiny_app_dir, compressed=TRUE)
+    untar(tarfile = opt$shiny.files, exdir = shiny_app_dir)
     cat("Successfully extracted!\n")
 }
 makeShinyCodes(
