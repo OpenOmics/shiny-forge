@@ -84,7 +84,7 @@ option_list <- list(
         )
     ),
     make_option(
-        c("--files"),
+        "--files",
         type = "character",
         dest = "shiny.files",
         metavar = "SHINY FILE [str]",
