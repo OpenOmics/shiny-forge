@@ -82,7 +82,7 @@ option_list <- list(
             "Comma delimit multiple assays in a single string e.g.: RNA,spatial,ATAC,etc.", 
             "This will default to the first assay in the Seurat object (object@assays)", sep=" "
         )
-    )
+    ),
     make_option(
         c("--files"),
         type = "character",
@@ -228,8 +228,8 @@ if (!is.null(opt$shiny.files) & !is.na(opt$shiny.files) & opt$shiny.files != "" 
     )
 } else {
     cat('Shiny tar.gz provided - skipping object setup')
-    if (!grepl("\\.tar\\.gz$", file_path, ignore.case = TRUE)) {
-        fatal("Error: File is not a tar.gz file:", file_path, "\nFile must have .tar.gz extension\n")
+    if (!grepl("\\.tar\\.gz$", file_path, ignore.case = TRUE) & !grepl("\\.tgz$", file_path, ignore.case = TRUE)) {
+        fatal("Error: File is not a .tar.gz or .tgz file:", file_path, "\nFile must have .tar.gz or .tgz extension\n")
     }
     cat("Extracting", opt$shiny.files, "to", shiny_app_dir, "\n")
     untar(tarfile = opt$shiny.files, exdir = shiny_app_dir, compressed=TRUE)

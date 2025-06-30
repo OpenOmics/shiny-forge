@@ -16,7 +16,7 @@ ARG SHINY_FILES="NA"
 # Copy the Seurat RDS file
 COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds
 RUN mkdir -p /data/aux
-COPY ${SHINY_FILES} /data/aux
+COPY ${SHINY_FILES} /data/aux/
 USER root
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
