@@ -42,8 +42,9 @@ class ShinyGCPDeploy:
     functionality, usage, and any important considerations.
     """
     
-    def __init__(self):
+    def __init__(self, cloud=False):
         """Initialize the deployment tool"""
+        self.cloud = cloud
         urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
         # logging.captureWarnings(True)
         self._ensure_dependencies()
@@ -62,7 +63,7 @@ class ShinyGCPDeploy:
                               stderr=subprocess.PIPE,
                               env=ENV, 
                               check=False)
-            except FileNotFoundError as e:
+            except (FileNotFoundError, PermissionError) as e:
                 print(f"Error: {dep} not found. Please install it to use this tool.")
                 if dep == "gcloud":
                     raise FileNotFoundError("Visit https://cloud.google.com/sdk/docs/install for installation instructions.") from e
@@ -71,7 +72,10 @@ class ShinyGCPDeploy:
                     if not re.match(r"cn[0-9]{4}", hostname):
                         raise FileNotFoundError("Visit https://docs.docker.com/get-docker/ for installation instructions.") from e
                     else:
-                        logging.info('Docker does not exist, but this is a biowulf compute node')
+                        if getattr(self, 'cloud', False):
+                            logging.info('Docker does not exist, but this is a biowulf compute node with cloud flag')
+                        else:
+                            raise ValueError('Using shiny-forge on biowulf only works when building docker images in the cloud! Please use --cloud')
     
     def _check_gcloud_auth(self):
         """Check if user is authenticated with gcloud"""
@@ -479,7 +483,7 @@ def main():
         parser.print_help()
         return
     
-    deployer = ShinyGCPDeploy()
+    deployer = ShinyGCPDeploy(args.cloud)
     
     if args.command == "create":
         if args.cloud:
