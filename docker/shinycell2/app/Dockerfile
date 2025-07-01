@@ -15,18 +15,26 @@ ARG SHINY_FILES="NA"
 ############## SETUP ################
 # Copy the Seurat RDS file
 COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds
+USER root
 RUN mkdir -p /data/aux
 COPY ${SHINY_FILES} /data/aux/
-USER root
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
+RUN <<EOF
+if [ $SHINY_FILES == "NA" ]; then
+        SHINY_FILE_DIR=""
+else
+        SHINY_FILE_DIR="/data/aux/$(basename $SHINY_FILES)"
+fi
+export $SHINY_FILE_DIR
+EOF
 RUN Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
         --proj "${PROJECT_ID}" \
         --rmmeta "${RM_META}" \
         --defred "${DEFAULT_RED}" \
         --maxlevels "${MAX_LEVELS}" \
-        --files "${SHINY_FILES}" \
+        --files "$SHINY_FILE_DIR" \
         && rm /opt2/seurat_object.rds
 # Listen on port for incoming connections
 EXPOSE 8080
