@@ -9,6 +9,8 @@ REGION = "us-east4"
 
 PROJECT = 'OpenOmics-GCP'
 
+REPO_ROOT = os.path.abspath(os.path.join(os.path.abspath(__file__), '..', '..'))
+
 ENV = os.environ.copy()
 ENV['PYTHONWARNINGS'] = "ignore:Unverified HTTPS request"
 
