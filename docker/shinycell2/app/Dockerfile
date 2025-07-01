@@ -21,12 +21,13 @@ COPY ${SHINY_FILES} /data/aux/
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
 RUN <<EOF
-if [ $SHINY_FILES == "NA" ]; then
+#!/bin/bash
+if [ "$SHINY_FILES" == "NA" ]; then
         SHINY_FILE_DIR=""
 else
         SHINY_FILE_DIR="/data/aux/$(basename $SHINY_FILES)"
 fi
-export $SHINY_FILE_DIR
+export SHINY_FILE_DIR=$SHINY_FILE_DIR
 EOF
 RUN Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
