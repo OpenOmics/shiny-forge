@@ -200,6 +200,8 @@ def cloud_build(
                 '--labels', hash_labels,
                 '--region', REGION,
                 '--memory', f'{mem}Gi',
+                '--max-instances', '1',
+                '--min-instances', '0',
                 '--cpu', f'{cpu}'
             ],
             'waitFor': ['push-latest']
@@ -220,7 +222,9 @@ def cloud_build(
                     '--labels', hash_labels,
                     '--region', REGION,
                     '--memory', f'{mem}Gi',
-                    '--cpu', f'{cpu}'
+                    '--cpu', f'{cpu}',
+                    '--max-instances', '1',
+                    '--min-instances', '0'
                 ],
                 'waitFor': ['push-latest']
             }
