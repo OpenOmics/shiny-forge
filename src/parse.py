@@ -8,7 +8,7 @@ import git
 import hashlib
 from dockerfile_parse import DockerfileParser
 from typing import List, Union
-from .config import REGION, ENV
+from .config import REGION, ENV, REPO_ROOT
 
 
 ###
@@ -160,7 +160,10 @@ def get_sha1_hash(file_path):
 
 def get_hash_labels(artifacts_file):
     # get git hash
-    repo = git.Repo(search_parent_directories=True)
+    repo = git.Repo(
+        path=REPO_ROOT,
+        search_parent_directories=False,
+    )
     sha = repo.head.object.hexsha
     # get artifacts hash
     artifacts = {k: v for k, v in read_artifacts(artifacts_file).items() if os.path.exists(os.path.abspath(v))}
