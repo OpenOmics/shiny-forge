@@ -162,7 +162,7 @@ def cloud_build(
         # > 4b. Steps to build actual docker container
         docker_build_step_id = f'build-docker-{app_name}'
         cloudbuild_build_docker_step = {
-            'name': 'gcr.io/cloud-builders/docker',
+            'name': 'gcr.io/cloud-builders/docker:24.0.9',
             'env': 'DOCKER_BUILDKIT=1',
             'args': [
                 'build', 
