@@ -64,12 +64,13 @@ class ShinyGCPDeploy:
                               env=ENV, 
                               check=False)
             except (FileNotFoundError, PermissionError) as e:
-                print(f"Error: {dep} not found. Please install it to use this tool.")
                 if dep == "gcloud":
+                    logging.info(f"Error: {dep} not found. Please install it to use this tool.")
                     raise FileNotFoundError("Visit https://cloud.google.com/sdk/docs/install for installation instructions.") from e
                 elif dep == "docker":
                     hostname = socket.gethostname()
                     if not re.match(r"cn[0-9]{4}", hostname):
+                        logging.info(f"Error: {dep} not found. Please install it to use this tool.")
                         raise FileNotFoundError("Visit https://docs.docker.com/get-docker/ for installation instructions.") from e
                     else:
                         if getattr(self, 'cloud', False):
