@@ -117,6 +117,8 @@ if (length(missing_args) > 0) {
     quit(status = 1)
 }
 
+fatal(opt$shiny.files)
+
 if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | opt$shiny.files == "NA") {
     fatal('shouldn\'t be here')
     seurat_obj              <- readRDS(rds_file)

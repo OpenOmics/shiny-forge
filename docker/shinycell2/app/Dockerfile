@@ -20,12 +20,15 @@ RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
 RUN <<EOF
 #!/bin/bash
+yell() { echo "$0: $*" >&2; }
+die() { yell "$*"; exit 111; }
 if [ "$SHINY_FILES" == "NA" ]; then
         SHINY_FILE_DIR=""
 else
         SHINY_FILE_DIR="/data/aux/$(basename $SHINY_FILES)"
 fi
 export SHINY_FILE_DIR=$SHINY_FILE_DIR
+yell("--- ${SHINY_FILE_DIR} ---")
 EOF
 RUN Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
@@ -34,7 +37,7 @@ RUN Rscript /opt2/build_shinycell.R \
         --defred "${DEFAULT_RED}" \
         --maxlevels "${MAX_LEVELS}" \
         --assay "${SEURAT_ASSAY}" \
-        --files "$SHINY_FILE_DIR" \
+        --files "${SHINY_FILE_DIR}" \
         && rm /opt2/seurat_object.rds
 # Listen on port for incoming connections
 EXPOSE 8080
