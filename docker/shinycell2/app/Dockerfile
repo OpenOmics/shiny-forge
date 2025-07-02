@@ -25,10 +25,9 @@ if [ "$SHINY_FILES" != "NA" ]; then
 fi
 echo "SHINY_FILE_DIR=$files" >> /etc/environment
 EOF
-RUN . /etc/environment && echo "Variable is: $SHINY_FILE_DIR"; exit 1
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
-RUN Rscript /opt2/build_shinycell.R \
+RUN . /etc/environment && Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
         --proj "${PROJECT_ID}" \
         --rmmeta "${RM_META}" \
