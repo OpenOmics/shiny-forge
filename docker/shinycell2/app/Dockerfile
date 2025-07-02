@@ -1,11 +1,9 @@
+# syntax=docker/dockerfile:1
 FROM gcr.io/openomics-gcp/shinycell2-base:latest
 ADD Dockerfile /opt2/shinycell2.app.dockerfile
-ENV R_MAX_VSIZE=64000000000
+ENV R_MAX_VSIZE=300000000000
 ############### ARGS ################
-# RDS file containing a Seurat object
 ARG SEURAT_RDS
-# Project identifer, becomes title of
-# Shiny application
 ARG PROJECT_ID
 ARG DEFAULT_RED="NA"
 ARG RM_META="NA"
@@ -13,9 +11,9 @@ ARG MAX_LEVELS="NA"
 ARG SEURAT_ASSAY="NA"
 ARG SHINY_FILES="NA"
 ############## SETUP ################
-# Copy the Seurat RDS file
-COPY --chmod=777 "${SEURAT_RDS}" /opt2/seurat_object.rds
+COPY "${SEURAT_RDS}" /opt2/seurat_object.rds
 USER root
+RUN chmod 777 /opt2/seurat_object.rds
 RUN mkdir -p /data/aux
 COPY ${SHINY_FILES} /data/aux/
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
@@ -35,6 +33,7 @@ RUN Rscript /opt2/build_shinycell.R \
         --rmmeta "${RM_META}" \
         --defred "${DEFAULT_RED}" \
         --maxlevels "${MAX_LEVELS}" \
+        --assay "${SEURAT_ASSAY}" \
         --files "$SHINY_FILE_DIR" \
         && rm /opt2/seurat_object.rds
 # Listen on port for incoming connections

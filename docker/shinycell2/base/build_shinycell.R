@@ -106,7 +106,6 @@ opt <- parse_args(OptionParser(option_list=option_list))
 # setup opt parse variables for downstream 
 # usage into shinycell2
 rds_file                <- opt$object
-seurat_obj              <- readRDS(rds_file)
 project_name            <- opt$project
 required_args           <- c("object", "project")
 missing_args            <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
@@ -119,6 +118,7 @@ if (length(missing_args) > 0) {
 }
 
 if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | opt$shiny.files == "NA") {
+    seurat_obj              <- readRDS(rds_file)
     if (is.null(opt$meta.to.rm) | is.na(opt$max.levels) | opt$meta.to.rm == "" | opt$meta.to.rm == "NA") {
         rm.meta             <- NULL
     } else {
