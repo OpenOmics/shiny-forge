@@ -288,7 +288,7 @@ class ShinyGCPDeploy:
         Update an existing Shiny application deployment
         """
         self._check_app_exists(app_name)
-        # Setup docker build
+        # Setup docker buildx
         build_args = read_dockerfile(docker)
         project_id = subprocess.run(
             ["gcloud", "config", "get-value", "project"],

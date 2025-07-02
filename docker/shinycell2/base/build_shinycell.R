@@ -106,6 +106,7 @@ opt <- parse_args(OptionParser(option_list=option_list))
 # setup opt parse variables for downstream 
 # usage into shinycell2
 rds_file                <- opt$object
+seurat_obj              <- readRDS(rds_file)
 project_name            <- opt$project
 required_args           <- c("object", "project")
 missing_args            <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
@@ -218,9 +219,6 @@ if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | 
     if (!is.null(default.reduction)) {
         files_params$dimred.to.use = opt$default.reduction
         files_params$default.dimred = default.reduction
-    }
-    if (!is.null(assay.to.use)) {
-        files_params$assay = assay.to.use
     }
 
     do.call(
