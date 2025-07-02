@@ -23,7 +23,7 @@ files=""
 if [ "$SHINY_FILES" != "NA" ]; then 
         files="/data/aux/$(basename $SHINY_FILES)"
 fi
-echo "SHINY_FILE_DIR=$result" >> /etc/environment
+echo "SHINY_FILE_DIR=$files" >> /etc/environment
 EOF
 RUN . /etc/environment && echo "Variable is: $SHINY_FILE_DIR"; exit 1
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
