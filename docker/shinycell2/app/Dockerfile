@@ -18,8 +18,18 @@ RUN mkdir -p /data/aux
 COPY ${SHINY_FILES} /data/aux/
 RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
 USER shinyuser
-ARG SHINY_FILE_DIR=$(bash -c 'if [ "$SHINY_FILES" == "NA" ]; then echo ""; else echo "/data/aux/$(basename $SHINY_FILES)"; fi')
-RUN echo "$SHINY_FILE_DIR"; exit 1;
+ARG SHINY_FILE_DIR=$(bash -c '')
+RUN <<EOF
+#!/bin/bash
+set -e
+files=""
+if [ "$SHINY_FILES" != "NA" ]; then 
+        files="/data/aux/$(basename $SHINY_FILES)"
+fi
+echo "SHINY_FILE_DIR=$result" >> /etc/environment
+EOF
+# Source the environment in subsequent RUN commands
+RUN . /etc/environment && echo "Variable is: $SHINY_FILE_DIR"; exit 1
 RUN Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
         --proj "${PROJECT_ID}" \
