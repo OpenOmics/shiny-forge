@@ -16,9 +16,6 @@ USER root
 RUN chmod 777 /opt2/seurat_object.rds
 RUN mkdir -p /data/aux
 COPY ${SHINY_FILES} /data/aux/
-RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
-USER shinyuser
-ARG SHINY_FILE_DIR=$(bash -c '')
 RUN <<EOF
 #!/bin/bash
 set -e
@@ -28,8 +25,9 @@ if [ "$SHINY_FILES" != "NA" ]; then
 fi
 echo "SHINY_FILE_DIR=$result" >> /etc/environment
 EOF
-# Source the environment in subsequent RUN commands
 RUN . /etc/environment && echo "Variable is: $SHINY_FILE_DIR"; exit 1
+RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
+USER shinyuser
 RUN Rscript /opt2/build_shinycell.R \
         --obj /opt2/seurat_object.rds \
         --proj "${PROJECT_ID}" \
