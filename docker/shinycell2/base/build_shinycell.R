@@ -226,6 +226,7 @@ if (is.null(opt$shiny.files) | is.na(opt$shiny.files) | opt$shiny.files == "" | 
         files_params
     )
 } else {
+    fatal(opt$shiny.files)
     cat("Shiny files tar.gz provided - skipping object setup\n")
     if (!grepl("\\.tar\\.gz$", opt$shiny.files, ignore.case = TRUE) & !grepl("\\.tgz$", opt$shiny.files, ignore.case = TRUE)) {
         fatal("Error: File is not a .tar.gz or .tgz file:", opt$shiny.files, "\nFile must have .tar.gz or .tgz extension\n")
