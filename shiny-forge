@@ -351,6 +351,95 @@ class ShinyGCPDeploy:
             
         return 
 
+    def deploy_auth_stack(
+            self,
+            app_name: str,
+            docker: str,
+            artifacts: str,
+            app_cpu: int,
+            app_mem: int,
+            proxy_name: str,
+            proxy_docker: str,
+            proxy_artifacts: str,
+            proxy_cpu: int,
+            proxy_mem: int,
+            proxy_service_account: Optional[str] = None,
+            update: bool = False
+        ):
+        '''Deploy a Shiny application behind an authentication proxy.'''
+        project_id = subprocess.run(
+            ['gcloud', 'config', 'get-value', 'project'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ENV,
+            check=True,
+            text=True
+        ).stdout.strip()
+
+        project_number = subprocess.run(
+            ['gcloud', 'projects', 'describe', project_id, '--format=value(projectNumber)'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env=ENV,
+            check=True,
+            text=True
+        ).stdout.strip()
+        default_service_account = f"{project_number}-compute@developer.gserviceaccount.com"
+        proxy_sa = proxy_service_account or default_service_account
+
+        print(f"Deploying '{app_name}' (Cloud Run, IAM only)...")
+        shiny_url = cloud_build(
+            project_id,
+            app_name,
+            docker,
+            artifacts,
+            mem=str(app_mem),
+            cpu=str(app_cpu),
+            update=update,
+            allow_unauthenticated=False
+        )
+
+        if not shiny_url:
+            raise RuntimeError("Unable to determine Cloud Run URL for the Shiny service; aborting proxy deployment.")
+
+        proxy_env = read_artifacts(proxy_artifacts)
+        runtime_env = {key: val for key, val in proxy_env.items() if val}
+        runtime_env['TARGET_BASE_URL'] = shiny_url
+        runtime_env.setdefault('TARGET_AUDIENCE', shiny_url)
+
+        if 'FIREBASE_PROJECT_ID' not in runtime_env:
+            print(f"{bcolors.WARNING}Warning: FIREBASE_PROJECT_ID is not set for the proxy deployment.{bcolors.ENDC}")
+
+        print(f"Deploying auth proxy '{proxy_name}'...")
+        proxy_url = cloud_build(
+            project_id,
+            proxy_name,
+            proxy_docker,
+            proxy_artifacts,
+            mem=str(proxy_mem),
+            cpu=str(proxy_cpu),
+            update=update,
+            allow_unauthenticated=True,
+            env_vars=runtime_env,
+            service_account=proxy_sa
+        )
+
+        subprocess.run([
+            'gcloud', 'run', 'services', 'add-iam-policy-binding', app_name,
+            f"--member=serviceAccount:{proxy_sa}",
+            '--role=roles/run.invoker',
+            '--region', REGION
+        ], env=ENV, check=True)
+
+        if proxy_url:
+            print(f"Stack deployed. Proxy URL: {proxy_url}")
+        else:
+            print(f"{bcolors.WARNING}Stack deployed, but proxy URL could not be determined. Inspect Cloud Run service '{proxy_name}'.{bcolors.ENDC}")
+
+        return proxy_url
+
+
+
     ### DELETE ###        
     def delete(self, 
                app_name: str):
@@ -457,6 +546,21 @@ def main():
     update_parser.add_argument("--max-cpu", dest='maxcpu', required=False, default=2, help="Maximum number of CPUs to use for application (Default 2 CPU)")
     update_parser.add_argument("--max-memory", dest='maxmem', required=False, default=4, help="Maximum number of memory (in gigabytes) to use for application (Default 4GiB)")
     
+    # Stack command
+    stack_parser = subparsers.add_parser("stack", help="Deploy a Shiny app behind an auth proxy")
+    stack_parser.add_argument("app_name", type=app_name_valid, help="Name of the application to deploy on the `openomics-gcp` project")
+    stack_parser.add_argument("docker", help="Dockerfile for the Shiny application")
+    stack_parser.add_argument("artifacts", help="Artifacts file for the Shiny application")
+    stack_parser.add_argument("proxy_name", type=app_name_valid, help="Name for the Cloud Run auth proxy service")
+    stack_parser.add_argument("proxy_docker", help="Dockerfile for the auth proxy")
+    stack_parser.add_argument("proxy_artifacts", help="Artifacts file for the auth proxy build and runtime configuration")
+    stack_parser.add_argument("--app-max-cpu", dest='app_maxcpu', type=int, default=2, help="Maximum number of CPUs for the Shiny service (default 2)")
+    stack_parser.add_argument("--app-max-memory", dest='app_maxmem', type=int, default=4, help="Maximum memory (GiB) for the Shiny service (default 4)")
+    stack_parser.add_argument("--proxy-max-cpu", dest='proxy_maxcpu', type=int, default=1, help="Maximum number of CPUs for the proxy service (default 1)")
+    stack_parser.add_argument("--proxy-max-memory", dest='proxy_maxmem', type=int, default=2, help="Maximum memory (GiB) for the proxy service (default 2)")
+    stack_parser.add_argument("--proxy-service-account", dest='proxy_service_account', default=None, help="Service account email for the proxy Cloud Run service")
+    stack_parser.add_argument("--update", action='store_true', help="Update existing services instead of creating new ones")
+
     # Delete command
     delete_parser = subparsers.add_parser("delete", help="Delete a Shiny application deployment")
     delete_parser.add_argument("app_name", help="Name of the application")
@@ -486,6 +590,22 @@ def main():
             deployer.update(args.app_name, args.docker, args.artifacts, args.maxcpu, args.maxmem)
     elif args.command == "read":
         deployer.read(args.app_name)
+    elif args.command == "stack":
+        deployer.deploy_auth_stack(
+            args.app_name,
+            args.docker,
+            args.artifacts,
+            args.app_maxcpu,
+            args.app_maxmem,
+            args.proxy_name,
+            args.proxy_docker,
+            args.proxy_artifacts,
+            args.proxy_maxcpu,
+            args.proxy_maxmem,
+            args.proxy_service_account,
+            args.update
+        )
+
     elif args.command == "delete":
         deployer.delete(args.app_name)
     elif args.command == "logs":

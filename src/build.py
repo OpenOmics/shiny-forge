@@ -186,49 +186,82 @@ def cloud_build(
 
         # > 4d. Deploy to Google Cloud Run and start
         hash_labels = get_hash_labels(artifacts)
+        base_deploy_args = [
+            'run',
+            'deploy',
+            app_name,
+        ]
+        if allow_unauthenticated:
+            base_deploy_args.append('--allow-unauthenticated')
+        else:
+            base_deploy_args.append('--no-allow-unauthenticated')
+        base_deploy_args.extend([
+            '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
+            '--labels', hash_labels,
+            '--region', REGION,
+            '--timeout', '3600',
+            '--memory', f'{mem}Gi',
+            '--cpu', f'{cpu}'
+        ])
+        if ingress:
+            base_deploy_args.extend(['--ingress', ingress])
+        if env_vars:
+            env_payload = ','.join(f"{key}={value}" for key, value in env_vars.items())
+            base_deploy_args.extend(['--set-env-vars', env_payload])
+        if service_account:
+            base_deploy_args.extend(['--service-account', service_account])
+        if extra_deploy_args:
+            base_deploy_args.extend(extra_deploy_args)
+
         cloudbuild_deploy_id = 'deploy-cloud-run'
         cloudbuild_cloudrun_deploy = {
             'name': 'gcr.io/google.com/cloudsdktool/cloud-sdk',
             'id': cloudbuild_deploy_id,
             'entrypoint': 'gcloud',
-            'args': [
-                'run', 
-                'deploy', 
-                app_name, 
-                '--allow-unauthenticated', # allow for unauthenticated access online
-                '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
-                '--labels', hash_labels,
-                '--region', REGION,
-                '--timeout', '3600',
-                '--memory', f'{mem}Gi',
-                '--cpu', f'{cpu}'
-            ],
+            'args': base_deploy_args,
             'waitFor': ['push-latest']
         }
 
         if update:
+            base_update_args = [
+                'run',
+                'services',
+                'update',
+                app_name
+            ]
+            if allow_unauthenticated:
+                base_update_args.append('--allow-unauthenticated')
+            else:
+                base_update_args.append('--no-allow-unauthenticated')
+            base_update_args.extend([
+                '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
+                '--labels', hash_labels,
+                '--timeout', '3600',
+                '--region', REGION,
+                '--memory', f'{mem}Gi',
+                '--cpu', f'{cpu}'
+            ])
+            if ingress:
+                base_update_args.extend(['--ingress', ingress])
+            if env_vars:
+                env_payload = ','.join(f"{key}={value}" for key, value in env_vars.items())
+                base_update_args.extend(['--set-env-vars', env_payload])
+            if service_account:
+                base_update_args.extend(['--service-account', service_account])
+            if extra_deploy_args:
+                base_update_args.extend(extra_deploy_args)
+
             cloudbuild_deploy_id = 'update-cloud-run'
             cloudbuild_cloudrun_deploy = {
                 'name': 'gcr.io/google.com/cloudsdktool/cloud-sdk',
                 'id': cloudbuild_deploy_id,
                 'entrypoint': 'gcloud',
-                'args': [
-                    'run',
-                    'services',
-                    'update',
-                    app_name,
-                    '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
-                    '--labels', hash_labels,
-                    '--timeout', '3600',
-                    '--region', REGION,
-                    '--memory', f'{mem}Gi',
-                    '--cpu', f'{cpu}'
-                ],
+                'args': base_update_args,
                 'waitFor': ['push-latest']
             }
 
         full_build_yaml = BASE_CLOUD_BUILD_STRUCTURE.copy()
-        full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step, 
+        full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step,
                                     cloudbuild_docker_push_latest, cloudbuild_cloudrun_deploy]
         full_build_yaml['images'] = [f'gcr.io/$PROJECT_ID/{app_name}:latest']
         dockerbuild_yaml = os.path.join(docker_dir.name, 'cloudbuild.yaml')
@@ -236,7 +269,7 @@ def cloud_build(
 
         # 5. Execute cloud build + run
         subprocess.run([
-            'gcloud', 'builds', 'submit', 
+            'gcloud', 'builds', 'submit',
             f'--region={REGION}',
             '--config', dockerbuild_yaml,
             '--polling-interval=50',
@@ -244,17 +277,16 @@ def cloud_build(
         ], cwd=docker_dir.name, env=ENV, check=True)
 
         # 6. Ensure unauthenticated access to the recently deployed application
-        # NOTE: this cannot be run as a step in the cloud build workflow
-        #       as the service account that executes the cloud building steps
-        #       does not have the appropriate permissions to set unauthenticated access
-        #       therefore it needs to be added locally at the command line which should
-        #       be authenticated as a regular user
-        subprocess.run([
-            'gcloud', 'run', 'services', 'add-iam-policy-binding', app_name,
-            '--member=allUsers', '--role=roles/run.invoker', f'--region={REGION}'
-        ], env=ENV, check=True)
+        if allow_unauthenticated:
+            subprocess.run([
+                'gcloud', 'run', 'services', 'add-iam-policy-binding', app_name,
+                '--member=allUsers', '--role=roles/run.invoker', f'--region={REGION}'
+            ], env=ENV, check=True)
 
         # 7. Get the URL for the deployed application
+
+
+
         all_urls = subprocess.check_output(
                     f'gcloud run services describe {app_name} --region={REGION} --format="value(metadata.annotations)"',
                     shell=True

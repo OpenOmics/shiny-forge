@@ -215,3 +215,30 @@ optional arguments:
 ### --lastn
 
 This is a optional key word argument that limits the returned logs to *n* entries, where *n* is the integer specified as the value
+## STACK
+
+Use shiny-forge stack when you want to deploy a Shiny service that requires Firebase-authenticated access via the new proxy image located in docker/auth-proxy. The CLI will first publish the Shiny container with Cloud Run ingress restricted to IAM callers, then deploy the proxy in front of it and connect the two services.
+
+`ash
+./shiny-forge stack shinycell-auth \
+    docker/shinycell/app/Dockerfile \
+    docker/shinycell/app/artifacts \
+    shinycell-auth-proxy \
+    docker/auth-proxy/Dockerfile \
+    docker/auth-proxy/auth-proxy.artifacts \
+    --app-max-cpu 2 --app-max-memory 4 \
+    --proxy-max-cpu 1 --proxy-max-memory 2 \
+    --proxy-service-account shiny-proxy@openomics-gcp.iam.gserviceaccount.com
+`
+
+### Artifacts for the proxy
+
+Populate docker/auth-proxy/auth-proxy.artifacts with Firebase project details and any optional allow-lists. At deploy time, stack injects those values as Cloud Run environment variables and appends the discovered Shiny URL (TARGET_BASE_URL) and audience (TARGET_AUDIENCE). Keep sensitive values (for example API keys) in Secret Manager and hydrate them into the artifacts file via environment substitution before running the command.
+
+### Behaviour overview
+
+1. Shiny service is built with cloud_build(... allow_unauthenticated=False) so only authenticated callers can reach it.
+2. The proxy service is deployed with Firebase enforcement and granted oles/run.invoker on the Shiny service.
+3. The command prints the proxy URL; distribute that endpoint to authenticated users and supply Firebase ID tokens through the Authorization: Bearer <token> header.
+
+If you need to update both services, re-run the same command with --update to push new images while leaving URLs intact.
