@@ -108,17 +108,19 @@ def _get_bearer_token(request: Request) -> Optional[str]:
     return _extract_token_from_cookies(request)
 
 
-def _clear_token_cookies(response: Response) -> None:
+def _clear_token_cookies(response: Response, secure: Optional[bool] = None) -> None:
+    secure_flags = [secure] if secure is not None else [False, True]
     for name in TOKEN_COOKIE_NAMES:
-        response.delete_cookie(name, path="/")
+        for flag in secure_flags:
+            response.delete_cookie(name, path="/", httponly=True, samesite="lax", secure=flag)
 
 
-def _build_logout_response(redirect: Optional[str] = None) -> Response:
+def _build_logout_response(redirect: Optional[str] = None, *, secure: Optional[bool] = None) -> Response:
     if redirect:
         response: Response = RedirectResponse(url=redirect, status_code=307)
     else:
         response = JSONResponse({"status": "ok"})
-    _clear_token_cookies(response)
+    _clear_token_cookies(response, secure)
     return response
 
 
@@ -241,14 +243,18 @@ async def login_page() -> HTMLResponse:
 
 
 @app.post("/logout")
-async def api_logout() -> Response:
-    return _build_logout_response()
+async def api_logout(request: Request) -> Response:
+    secure = request.url.scheme == "https"
+    return _build_logout_response(secure=secure)
 
 
 @app.get("/logout")
 async def logout_page(request: Request) -> Response:
-    redirect_target = request.query_params.get("redirect") or "/login"
-    return _build_logout_response(redirect_target)
+    redirect_target = request.query_params.get("redirect")
+    if not redirect_target:
+        redirect_target = "/login?logout=1"
+    secure = request.url.scheme == "https"
+    return _build_logout_response(redirect_target, secure=secure)
 
 
 @app.post("/session")

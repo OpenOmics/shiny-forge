@@ -51,3 +51,7 @@ Provide a valid Firebase ID token in the Authorization header when testing local
 For an end-to-end smoke test that includes a Shiny backend, use `python bin/run_local_auth_stack.py up ...` (ShinyCell2) or `python bin/run_local_auth_shiny_stack.py up ...` (legacy ShinyCell). Those helpers build the containers, serve `/login`, and wire the proxy to the sample app automatically.
 
 After a successful sign-in at `/login`, requests to `/` now redirect to `/index.html` instead of returning the JSON status payload so testers immediately land in the Shiny UI.
+
+### Documentation note
+
+The architecture SVG used in the MkDocs pages (`auth-proxy-to-shinycell2.svg`) is treated as a generated asset and intentionally left untracked in Git. Export it from the design source (or copy the published version) before running `mkdocs build` locally; otherwise the rendered documentation will fall back to a missing image placeholder.

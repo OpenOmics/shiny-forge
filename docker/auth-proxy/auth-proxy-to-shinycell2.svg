@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155" />
+    </marker>
+    <style>
+      .box { fill:#f8fafc; stroke:#334155; stroke-width:2; rx:8; }
+      .label { font: 600 14px/1.2 'Segoe UI', Arial, sans-serif; fill:#0f172a }
+      .sub { font: 400 12px/1.2 'Segoe UI', Arial, sans-serif; fill:#475569 }
+      .title { font: 700 18px/1.2 'Segoe UI', Arial, sans-serif; fill:#030712 }
+      .note { font: 400 11px/1.2 'Segoe UI', Arial, sans-serif; fill:#64748b }
+      .network { fill: none; stroke:#94a3b8; stroke-dasharray:6 6; stroke-width:2; }
+      .arrow { stroke:#334155; stroke-width:2; fill:none; marker-end:url(#arrow); }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="30" y="28" class="title">Auth reverse-proxy → ShinyCell2 (local) — diagram</text>
+
+  <!-- Browser -->
+  <g transform="translate(40,60)">
+    <rect class="box" x="0" y="0" width="220" height="100" rx="10"/>
+    <text x="16" y="28" class="label">Developer Browser</text>
+    <text x="16" y="50" class="sub">Firebase JS SDK (login UI)</text>
+    <text x="16" y="68" class="sub">Sends ID token → Proxy</text>
+  </g>
+
+  <!-- Firebase Auth -->
+  <g transform="translate(320,60)">
+    <rect class="box" x="0" y="0" width="220" height="100" rx="10"/>
+    <text x="16" y="28" class="label">Firebase Auth (Google)</text>
+    <text x="16" y="50" class="sub">Issues ID tokens (idToken)</text>
+  </g>
+
+  <!-- Auth Proxy -->
+  <g transform="translate(40,200)">
+    <rect class="box" x="0" y="0" width="420" height="160" rx="10"/>
+    <text x="16" y="28" class="label">Auth Proxy (FastAPI)</text>
+    <text x="16" y="52" class="sub">- Verifies ID token with Firebase Admin</text>
+    <text x="16" y="72" class="sub">- Sets HttpOnly session cookie (/session)</text>
+    <text x="16" y="92" class="sub">- Forwards requests to ShinyCell2 with:</text>
+    <text x="36" y="112" class="sub">X-Forwarded-User, X-Firebase-UID, X-Firebase-Token</text>
+    <text x="16" y="132" class="sub">- Uses IdentityTokenProvider to get upstream identity token</text>
+  </g>
+
+  <!-- Service account / Admin -->
+  <g transform="translate(480,200)">
+    <rect class="box" x="0" y="0" width="240" height="120" rx="10"/>
+    <text x="16" y="28" class="label">Firebase Admin (server SDK)</text>
+    <text x="16" y="52" class="sub">Verifies idToken using</text>
+    <text x="16" y="72" class="sub">service-account.json (mounted)</text>
+  </g>
+
+  <!-- Identity token provider -->
+  <g transform="translate(480,340)">
+    <rect class="box" x="0" y="0" width="240" height="80" rx="10"/>
+    <text x="16" y="28" class="label">IdentityTokenProvider</text>
+    <text x="16" y="52" class="sub">Fetches identity token for upstream</text>
+  </g>
+
+  <!-- Docker Network and Shiny -->
+  <g transform="translate(40,400)">
+    <rect class="network" x="-8" y="-8" width="820" height="260" rx="10"/>
+    <text x="16" y="24" class="note">Docker Network (e.g. shiny-auth-test)</text>
+
+    <g transform="translate(40,40)">
+      <rect class="box" x="0" y="0" width="420" height="160" rx="10"/>
+      <text x="16" y="28" class="label">ShinyCell2 Container</text>
+      <text x="16" y="52" class="sub">- R Shiny app listens on :8080</text>
+      <text x="16" y="72" class="sub">- Healthcheck used by helper</text>
+    </g>
+
+    <g transform="translate(500,40)">
+      <rect class="box" x="0" y="0" width="240" height="120" rx="10"/>
+      <text x="16" y="28" class="label">Optional Firebase Auth Emulator</text>
+      <text x="16" y="52" class="sub">(HOST:PORT) for local testing</text>
+    </g>
+  </g>
+
+  <!-- Arrows -->
+  <path class="arrow" d="M 260 110 L 320 110" />
+  <text x="280" y="105" class="note">JS SDK: OAuth flow</text>
+
+  <path class="arrow" d="M 160 160 L 160 200 L 60 200" />
+  <text x="80" y="182" class="note">POST /session (idToken)</text>
+
+  <path class="arrow" d="M 540 260 L 540 200" />
+  <text x="550" y="230" class="note">verify_id_token()</text>
+
+  <path class="arrow" d="M 460 320 L 460 360" />
+  <text x="470" y="340" class="note">fetch id token for upstream</text>
+
+  <path class="arrow" d="M 260 340 L 480 420" />
+  <text x="330" y="360" class="note">Proxy → Shiny (forwarded headers)</text>
+
+  <!-- Legend -->
+  <g transform="translate(880,60)">
+    <rect class="box" x="0" y="0" width="280" height="220" rx="10"/>
+    <text x="16" y="28" class="label">Legend</text>
+    <text x="16" y="52" class="sub">• Browser: user-facing login UI (Firebase JS SDK)</text>
+    <text x="16" y="72" class="sub">• Auth Proxy: validates ID token, sets cookie, forwards</text>
+    <text x="16" y="92" class="sub">• Firebase Admin: verifies tokens using service account</text>
+    <text x="16" y="112" class="sub">• IdentityTokenProvider: mints identity tokens for upstream</text>
+    <text x="16" y="132" class="sub">• ShinyCell2: the protected upstream service</text>
+    <text x="16" y="156" class="note">Notes: Local dev uses --firebase-web-config and --firebase-credentials</text>
+  </g>
+
+</svg>

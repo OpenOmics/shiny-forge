@@ -99,8 +99,9 @@
 <script>
     const html = document.documentElement;
     const encodedConfig = html.dataset.config || "";
-    const cookieName = html.dataset.cookie || "__session";
     const redirectPath = html.dataset.redirect || "/";
+    const url = new URL(window.location.href);
+    const logoutRequested = url.searchParams.get("logout") === "1";
 
     function setStatus(message, isError = false) {
         const el = document.getElementById("status");
@@ -191,10 +192,24 @@
         }
     }
 
-    window.addEventListener("DOMContentLoaded", () => {
+    window.addEventListener("DOMContentLoaded", async () => {
         try {
             const config = decodeConfig(encodedConfig);
             const auth = ensureFirebase(config);
+
+            if (logoutRequested) {
+                try {
+                    await auth.signOut();
+                } catch (error) {
+                    console.error("Failed to reset Firebase session", error);
+                }
+                window.localStorage.removeItem("firebaseEmailForSignIn");
+                setStatus("Signed out. Sign in again to continue.");
+                url.searchParams.delete("logout");
+                const newQuery = url.searchParams.toString();
+                const newLocation = url.pathname + (newQuery ? `?${newQuery}` : "");
+                window.history.replaceState({}, "", newLocation);
+            }
 
             document.getElementById("google-button").addEventListener("click", async () => {
                 setStatus("Opening Google sign-in...");
