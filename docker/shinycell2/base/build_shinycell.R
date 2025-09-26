@@ -205,6 +205,7 @@ do.call(
 makeShinyCodes(
     shiny.title = project_name,
     shiny.dir = shiny_app_dir,
-    shiny.prefix = "sc1"
+    shiny.prefix = "sc1",
+    shiny.headers = shinycell_config
 )
 

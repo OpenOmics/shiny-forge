@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en" data-config="__FIREBASE_CONFIG_B64__" data-cookie="__FIREBASE_COOKIE__" data-redirect="__FIREBASE_REDIRECT__">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in to Shiny</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+        body {
+            margin: 0;
+            display: flex;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0d6efd 0%, #6610f2 100%);
+        }
+        main {
+            background-color: #ffffffee;
+            border-radius: 16px;
+            padding: 32px;
+            width: min(420px, 92vw);
+            box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+            backdrop-filter: blur(8px);
+        }
+        h1 {
+            margin-top: 0;
+            color: #111827;
+            font-size: 1.9rem;
+        }
+        p {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        button {
+            width: 100%;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        button.primary {
+            background: #2563eb;
+            color: #f9fafb;
+        }
+        button.secondary {
+            background: #111827;
+            color: #f9fafb;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+        }
+        #status {
+            margin-top: 18px;
+            color: #1f2937;
+            font-size: 0.95rem;
+        }
+        #status.error {
+            color: #dc2626;
+        }
+        small {
+            display: block;
+            margin-top: 24px;
+            color: #6b7280;
+            font-size: 0.75rem;
+        }
+        code {
+            font-family: ui-monospace, SFMono-Regular, SFMono, Menlo, monospace;
+            background: rgba(148, 163, 184, 0.18);
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+    </style>
+    <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+<main>
+    <h1>Sign in to continue</h1>
+    <p>Select a sign-in method below. Once complete, you will be redirected back to the protected Shiny application.</p>
+    <button class="primary" id="google-button">Continue with Google</button>
+    <button class="secondary" id="email-button">Continue with Email Link</button>
+    <div id="status"></div>
+    <small>
+        Authentication is powered by Firebase. Your ID token is stored in a secure cookie named <code>__FIREBASE_COOKIE__</code> so subsequent requests work like a normal application.
+    </small>
+</main>
+<script>
+    const html = document.documentElement;
+    const encodedConfig = html.dataset.config || "";
+    const cookieName = html.dataset.cookie || "__session";
+    const redirectPath = html.dataset.redirect || "/";
+
+    function setStatus(message, isError = false) {
+        const el = document.getElementById("status");
+        el.textContent = message;
+        el.classList.toggle("error", isError);
+    }
+
+    function decodeConfig(encoded) {
+        if (!encoded) {
+            return null;
+        }
+        try {
+            const json = atob(encoded);
+            return JSON.parse(json);
+        } catch (err) {
+            console.error("Failed to decode Firebase config", err);
+            return null;
+        }
+    }
+
+    async function storeToken(token) {
+        const response = await fetch("/session", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            credentials: "include",
+            body: JSON.stringify({ token }),
+        });
+        if (!response.ok) {
+            throw new Error("Failed to establish session");
+        }
+    }
+
+    function ensureFirebase(config) {
+        if (!config) {
+            setStatus("Firebase web configuration is missing. Ask your administrator to set FIREBASE_WEB_CONFIG.", true);
+            throw new Error("missing config");
+        }
+        firebase.initializeApp(config);
+        return firebase.auth();
+    }
+
+    async function signInWithGoogle(auth) {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        const result = await auth.signInWithPopup(provider);
+        const token = await result.user.getIdToken(true);
+        await storeToken(token);
+        setStatus("Signed in successfully, redirecting...");
+        window.location.href = redirectPath;
+    }
+
+    async function signInWithEmail(auth) {
+        const email = window.prompt("Enter your email address to receive a sign-in link:");
+        if (!email) {
+            return;
+        }
+        await auth.sendSignInLinkToEmail(email, {
+            url: window.location.origin + redirectPath,
+            handleCodeInApp: true,
+        });
+        window.localStorage.setItem("firebaseEmailForSignIn", email);
+        setStatus(`Verification link sent to ${email}. Check your inbox to finish sign-in.`);
+    }
+
+    function checkForEmailLink(auth) {
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem("firebaseEmailForSignIn");
+            if (!email) {
+                email = window.prompt("Please confirm your email to finish sign-in:");
+            }
+            if (!email) {
+                return;
+            }
+            auth.signInWithEmailLink(email, window.location.href)
+                .then(async (result) => {
+                    window.localStorage.removeItem("firebaseEmailForSignIn");
+                    const token = await result.user.getIdToken(true);
+                    await storeToken(token);
+                    setStatus("Signed in successfully, redirecting...");
+                    window.location.href = redirectPath;
+                })
+                .catch((error) => {
+                    console.error(error);
+                    setStatus("Failed to complete email link sign-in.", true);
+                });
+        }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+        try {
+            const config = decodeConfig(encodedConfig);
+            const auth = ensureFirebase(config);
+
+            document.getElementById("google-button").addEventListener("click", async () => {
+                setStatus("Opening Google sign-in...");
+                try {
+                    await signInWithGoogle(auth);
+                } catch (error) {
+                    console.error(error);
+                    setStatus(error.message || "Google sign-in failed.", true);
+                }
+            });
+
+            document.getElementById("email-button").addEventListener("click", async () => {
+                setStatus("Sending email link...");
+                try {
+                    await signInWithEmail(auth);
+                } catch (error) {
+                    console.error(error);
+                    setStatus(error.message || "Unable to send email link.", true);
+                }
+            });
+
+            auth.onAuthStateChanged(async (user) => {
+                if (!user) {
+                    checkForEmailLink(auth);
+                    return;
+                }
+                const token = await user.getIdToken(true);
+                await storeToken(token);
+                window.location.href = redirectPath;
+            });
+        } catch (error) {
+            console.error(error);
+        }
+    });
+</script>
+</body>
+</html>

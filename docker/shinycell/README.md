@@ -54,3 +54,20 @@ docker scan "shinycell:${tag:-v0.1.0_test}"
 ```
 
 > **Please Note**: Any references to `skchronicles` should be replaced your username if you would also like to push the image to a non-org account.
+
+$env:FIREBASE_WEB_CONFIG = (Get-Content ...\git\firebase-web-config.json -Raw)
+
+### Local auth proxy testing
+
+To smoke-test this image with the Firebase auth proxy locally, reuse the shared helper:
+
+```bash
+python bin/run_local_auth_shiny_stack.py up \
+    --firebase-project-id my-firebase-project \
+    --firebase-web-config C:/secrets/firebase-web-config.json
+
+# Tear down when done
+python bin/run_local_auth_shiny_stack.py down --remove-network
+```
+
+The helper reads defaults from `.env` and serves a `/login` page so you can authenticate through the browser before reaching the ShinyCell app on `http://localhost:8081`.

@@ -242,3 +242,32 @@ Populate docker/auth-proxy/auth-proxy.artifacts with Firebase project details an
 3. The command prints the proxy URL; distribute that endpoint to authenticated users and supply Firebase ID tokens through the Authorization: Bearer <token> header.
 
 If you need to update both services, re-run the same command with --update to push new images while leaving URLs intact.
+
+### Local auth proxy smoke test
+
+Use `bin/run_local_auth_stack.py` when you want to validate the Firebase login flow against the ShinyCell2 sample without touching Cloud Run resources. The helper now serves a `/login` page so testers can sign in through Firebase like they would in production. If you still need the original ShinyCell example, invoke `bin/run_local_auth_shiny_stack.py` instead; it keeps the same interface but targets `/srv/shiny-server/shinycell`.
+
+```
+python bin/run_local_auth_stack.py up \
+    --firebase-project-id my-firebase-project \
+    --firebase-credentials C:/path/to/service-account.json \
+    --firebase-web-config C:/secrets/firebase-web-config.json \
+    --firebase-id-token eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+The script will:
+
+1. Build local images for the Shiny app (using `data/seurat-pbmc_small.rds`) and the auth proxy.
+2. Launch both containers on an isolated docker network and expose the proxy on `http://localhost:8080` (the Shiny service sits on `http://localhost:8081`).
+3. Serve an interactive Firebase login page at `/login` that stores the ID token in a secure cookie before redirecting to the app.
+4. Optionally issue an authenticated request to confirm a supplied Firebase ID token is accepted.
+
+Pass `--skip-build` to reuse existing images, `--target-audience` when you need a specific Cloud Run audience for identity tokens, `--firebase-cookie-name` to test custom cookie names, and `--disallow-anonymous-options` to mirror production CORS behaviour. Tear the environment down with:
+
+```
+python bin/run_local_auth_stack.py down --remove-network
+# (Use bin/run_local_auth_shiny_stack.py for the legacy ShinyCell sample.)
+```
+
+Ensure Docker Desktop is running locally and provide Firebase service account credentials (or emulator settings) so the proxy can mint identity tokens for the Shiny container. For the web experience, export your Firebase web configuration JSON (apiKey, authDomain, projectId, etc.) into an environment variable or secret referenced by `--firebase-web-config`; this keeps credentials out of source control while unlocking browser-based testing.
+If you already store `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG`, `FIREBASE_CREDENTIALS`, `FIREBASE_TOKEN_COOKIE_NAMES`, `FIREBASE_LOGIN_REDIRECT`, or `FIREBASE_AUTH_EMULATOR_HOST` in a project-level `.env`, the helper will read those values automatically. Copy `.env.example` to `.env` for a starter template. After authenticating at `/login`, a visit to `http://localhost:8080/` now redirects into the Shiny UI instead of returning the JSON readiness payload.

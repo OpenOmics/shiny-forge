@@ -49,3 +49,18 @@ export PATH="${PATH}:${PWD}"
 # Get usage information
 shiny-forge -h
 ```
+
+### Local auth testing
+
+- `bin/run_local_auth_stack.py` spins up the ShinyCell2 sample plus the Firebase auth proxy on Docker for end-to-end login testing (serves `/login`).
+- `bin/run_local_auth_shiny_stack.py` provides the same flow for the original ShinyCell sample if you still depend on that image.
+
+Both commands accept the same flags (for example `--firebase-project-id`, `--firebase-web-config`, `--firebase-credentials`, `--firebase-cookie-name`). Copy `.env.example` to `.env` and populate the Firebase settings there—the helper will read `FIREBASE_PROJECT_ID`, `FIREBASE_WEB_CONFIG`, `FIREBASE_CREDENTIALS`, `FIREBASE_TOKEN_COOKIE_NAMES`, `FIREBASE_LOGIN_REDIRECT`, and `FIREBASE_AUTH_EMULATOR_HOST` automatically.
+
+```bash
+python bin/run_local_auth_stack.py up --firebase-project-id my-firebase --firebase-web-config C:/path/to/firebase-web-config.json
+# ...
+python bin/run_local_auth_stack.py down --remove-network
+```
+
+Swap in `bin/run_local_auth_shiny_stack.py` for the legacy ShinyCell container when needed.

@@ -1,14 +1,18 @@
 import asyncio
+import base64
+import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Dict, Iterable, Optional
 from urllib.parse import urljoin
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, Response, WebSocket
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+import websockets
 import firebase_admin
 from firebase_admin import auth as firebase_auth
 from google.auth.transport.requests import Request as GoogleAuthRequest
@@ -18,6 +22,8 @@ load_dotenv()
 
 logger = logging.getLogger("auth-proxy")
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO").upper())
+
+APP_ROOT = Path(__file__).resolve().parent
 
 TARGET_BASE_URL = os.environ.get("TARGET_BASE_URL")
 if not TARGET_BASE_URL:
@@ -30,6 +36,22 @@ FORWARD_HEADERS = {h.strip().lower() for h in os.environ.get("FORWARD_HEADERS", 
 ALLOWED_EMAILS = {email.strip().lower() for email in os.environ.get("FIREBASE_ALLOWED_EMAILS", "").split(",") if email.strip()}
 ALLOWED_DOMAINS = {domain.strip().lower() for domain in os.environ.get("FIREBASE_ALLOWED_DOMAINS", "").split(",") if domain.strip()}
 UPSTREAM_TIMEOUT_SECONDS = float(os.environ.get("UPSTREAM_TIMEOUT_SECONDS", "45"))
+TOKEN_COOKIE_NAMES = [
+    name.strip() for name in os.environ.get("FIREBASE_TOKEN_COOKIE_NAMES", "__session,firebase_id_token").split(",") if name.strip()
+]
+LOGIN_REDIRECT_PATH = os.environ.get("FIREBASE_LOGIN_REDIRECT", "/")
+
+_firebase_web_config_raw = os.environ.get("FIREBASE_WEB_CONFIG")
+if _firebase_web_config_raw:
+    try:
+        FIREBASE_WEB_CONFIG = json.loads(_firebase_web_config_raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("FIREBASE_WEB_CONFIG must contain valid JSON") from exc
+else:
+    FIREBASE_WEB_CONFIG = None
+
+_login_template = (APP_ROOT / "login.html")
+LOGIN_TEMPLATE_CONTENT = _login_template.read_text(encoding="utf-8") if _login_template.exists() else None
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app()
@@ -47,6 +69,57 @@ HOP_HEADERS = {
 }
 
 app = FastAPI(title="shiny-forge auth proxy", version="0.1.0")
+
+
+def _render_login_page() -> str:
+    if not LOGIN_TEMPLATE_CONTENT:
+        return "<h1>Login unavailable</h1><p>Missing login.html template in the container image.</p>"
+    if not FIREBASE_WEB_CONFIG:
+        return (
+            "<h1>Login unavailable</h1>"
+            "<p>Set the <code>FIREBASE_WEB_CONFIG</code> environment variable to serve the login page.</p>"
+        )
+    config_json = json.dumps(FIREBASE_WEB_CONFIG)
+    encoded = base64.b64encode(config_json.encode("utf-8")).decode("ascii")
+    primary_cookie = TOKEN_COOKIE_NAMES[0] if TOKEN_COOKIE_NAMES else "__session"
+    return (
+        LOGIN_TEMPLATE_CONTENT
+        .replace("__FIREBASE_CONFIG_B64__", encoded)
+        .replace("__FIREBASE_COOKIE__", primary_cookie)
+        .replace("__FIREBASE_REDIRECT__", LOGIN_REDIRECT_PATH)
+    )
+
+
+def _extract_token_from_cookies(request: Request) -> Optional[str]:
+    for name in TOKEN_COOKIE_NAMES:
+        value = request.cookies.get(name)
+        if not value:
+            continue
+        if value.lower().startswith("bearer "):
+            return value.split(" ", 1)[1]
+        return value
+    return None
+
+
+def _get_bearer_token(request: Request) -> Optional[str]:
+    authorization = request.headers.get("Authorization")
+    if authorization and authorization.lower().startswith("bearer "):
+        return authorization.split(" ", 1)[1]
+    return _extract_token_from_cookies(request)
+
+
+def _clear_token_cookies(response: Response) -> None:
+    for name in TOKEN_COOKIE_NAMES:
+        response.delete_cookie(name, path="/")
+
+
+def _build_logout_response(redirect: Optional[str] = None) -> Response:
+    if redirect:
+        response: Response = RedirectResponse(url=redirect, status_code=307)
+    else:
+        response = JSONResponse({"status": "ok"})
+    _clear_token_cookies(response)
+    return response
 
 
 class IdentityTokenProvider:
@@ -108,11 +181,9 @@ async def require_firebase_user(request: Request) -> Dict:
     if request.method == "OPTIONS" and ALLOW_ANONYMOUS_OPTIONS:
         return {}
 
-    authorization = request.headers.get("Authorization")
-    if not authorization or not authorization.lower().startswith("bearer "):
+    token = _get_bearer_token(request)
+    if not token:
         raise HTTPException(status_code=401, detail="Missing Authorization bearer token")
-
-    token = authorization.split(" ", 1)[1]
     try:
         decoded = firebase_auth.verify_id_token(token, clock_skew_seconds=60)
     except Exception as exc:  # firebase_admin raises several specific errors; wrap into 401
@@ -162,9 +233,96 @@ async def healthcheck() -> Dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page() -> HTMLResponse:
+    content = _render_login_page()
+    status_code = 200 if FIREBASE_WEB_CONFIG else 503
+    return HTMLResponse(content=content, status_code=status_code)
+
+
+@app.post("/logout")
+async def api_logout() -> Response:
+    return _build_logout_response()
+
+
+@app.get("/logout")
+async def logout_page(request: Request) -> Response:
+    redirect_target = request.query_params.get("redirect") or "/login"
+    return _build_logout_response(redirect_target)
+
+
+@app.post("/session")
+async def establish_session(payload: Dict[str, str], request: Request) -> JSONResponse:
+    token = payload.get("token") or payload.get("idToken") or payload.get("id_token")
+    if not token:
+        logger.warning("/session called without token payload")
+        raise HTTPException(status_code=400, detail="Missing Firebase ID token")
+
+    try:
+        decoded = firebase_auth.verify_id_token(token, clock_skew_seconds=60)
+    except Exception as exc:  # noqa: BLE001 - firebase raises multiple subclasses
+        logger.debug("Failed to verify Firebase token during session creation", exc_info=exc)
+        raise HTTPException(status_code=401, detail="Invalid Firebase ID token") from exc
+
+    if FIREBASE_PROJECT_ID and decoded.get("aud") != FIREBASE_PROJECT_ID:
+        logger.warning(
+            "Firebase token audience mismatch",
+            extra={
+                "expected_aud": FIREBASE_PROJECT_ID,
+                "token_aud": decoded.get("aud"),
+                "uid": decoded.get("uid"),
+            },
+        )
+        raise HTTPException(status_code=401, detail="Token audience mismatch")
+
+    if not _email_allowed(decoded.get("email")):
+        logger.warning(
+            "Firebase email not permitted",
+            extra={
+                "email": decoded.get("email"),
+                "uid": decoded.get("uid"),
+            },
+        )
+        raise HTTPException(status_code=403, detail="Email is not permitted")
+
+    cookie_name = TOKEN_COOKIE_NAMES[0] if TOKEN_COOKIE_NAMES else "__session"
+    secure = request.url.scheme == "https"
+
+    response = JSONResponse({"status": "ok"})
+    response.set_cookie(
+        cookie_name,
+        token,
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=secure,
+        max_age=3600,
+    )
+    logger.info(
+        "Session established",
+        extra={
+            "uid": decoded.get("uid"),
+            "email": decoded.get("email"),
+        },
+    )
+    return response
+
+
 @app.get("/")
-async def root() -> Dict[str, str]:
-    return {"status": "ready", "target": TARGET_BASE_URL}
+async def root(request: Request) -> Response:
+    token = _get_bearer_token(request)
+
+    if not token:
+        return RedirectResponse(url="/login", status_code=307)
+
+    try:
+        await require_firebase_user(request)
+    except HTTPException as exc:
+        if exc.status_code == 401:
+            return RedirectResponse(url="/login", status_code=307)
+        raise
+
+    return await proxy("", request)
 
 
 @app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
@@ -210,9 +368,67 @@ async def proxy(path: str, request: Request) -> Response:
         logger.error("Upstream request failed", exc_info=exc)
         raise HTTPException(status_code=502, detail="Failed to reach upstream service") from exc
 
-    filtered_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in HOP_HEADERS}
+    skip_headers = HOP_HEADERS | {"content-encoding"}
+    filtered_headers = {k: v for k, v in upstream.headers.items() if k.lower() not in skip_headers}
     return Response(content=upstream.content, status_code=upstream.status_code, headers=filtered_headers)
 
+
+@app.websocket("/{path:path}")
+async def websocket_proxy(websocket: WebSocket, path: str) -> None:
+    token = _get_bearer_token(websocket)
+    if not token:
+        await websocket.close(code=4401)
+        return
+
+    fake_request = Request(scope={
+        "type": "http",
+        "headers": [],
+        "method": "GET",
+        "path": f"/{path}",
+        "query_string": b"",
+    })
+    fake_request._cookies = websocket.cookies
+    try:
+        await require_firebase_user(fake_request)
+    except HTTPException:
+        await websocket.close(code=4403)
+        return
+
+    await websocket.accept()
+
+    downstream_url = TARGET_BASE_URL
+    if path:
+        downstream_url = urljoin(f"{TARGET_BASE_URL}/", path)
+    downstream_url = downstream_url.replace("http://", "ws://").replace("https://", "wss://")
+
+    async with websockets.connect(downstream_url) as upstream_ws:
+        async def client_to_upstream() -> None:
+            try:
+                while True:
+                    message = await websocket.receive()
+                    if "text" in message:
+                        await upstream_ws.send(message["text"])
+                    elif "bytes" in message:
+                        await upstream_ws.send(message["bytes"])
+                    elif message.get("type") == "ping":
+                        await upstream_ws.ping()
+                    elif message.get("type") == "close":
+                        await upstream_ws.close()
+                        break
+            except Exception:
+                await upstream_ws.close()
+
+        async def upstream_to_client() -> None:
+            try:
+                async for data in upstream_ws:
+                    if isinstance(data, str):
+                        await websocket.send_text(data)
+                    else:
+                        await websocket.send_bytes(data)
+            except Exception:
+                await websocket.close()
+
+        await asyncio.gather(client_to_upstream(), upstream_to_client())
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_: Request, exc: HTTPException) -> JSONResponse:
