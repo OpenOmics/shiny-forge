@@ -71,6 +71,7 @@ RUN apt-get update \
         unzip \
         wget \
         zlib1g-dev \
+        libglpk-dev \
     && apt-get clean && apt-get purge \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
@@ -102,7 +103,7 @@ RUN mkdir -p /opt2/ \
 # Copy R script to install packages
 COPY install_packages.R /opt2/install_packages.R
 RUN cd /opt2 && Rscript /opt2/install_packages.R 
-RUN Rscript -e 'devtools::install_github("the-ouyang-lab/ShinyCell2")'
+RUN Rscript -e 'devtools::install_github("OpenOmics/ShinyCell2")'
 COPY git_installs.sh /opt2/work/git_installs.sh
 RUN cd /opt2/work; ./git_installs.sh
 COPY build_shinycell.R /opt2/build_shinycell.R
