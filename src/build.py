@@ -27,7 +27,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def build_setup():
     ## For slow upload speed
     # storage.blob._DEFAULT_CHUNKSIZE = 5242880 # 1024 * 1024 B * 2 = 5 MB
-    # storage.blob._MAX_MULTIPART_SIZE = 5242880 
+    # storage.blob._MAX_MULTIPART_SIZE = 5242880
     subprocess.run(['gcloud', 'config', 'set', 'billing/quota_project', PROJECT.lower()], env=ENV, check=True)
     subprocess.run(['gcloud', 'config', 'set', 'storage/parallel_composite_upload_enabled', 'True'], check=True)
     return
@@ -36,7 +36,7 @@ def build_setup():
 def create_gcs_bucket(project_id: str, bucket_name: str) -> None:
     """
     Create a new GCS bucket.
-    
+
     Args:
         project_id: Google Cloud Project ID
         bucket_name: Name for the new bucket
@@ -49,7 +49,7 @@ def create_gcs_bucket(project_id: str, bucket_name: str) -> None:
 def delete_gcs_bucket(project_id: str, bucket_name: str) -> None:
     """
     Delete a GCS bucket and all its contents.
-    
+
     Args:
         project_id: Google Cloud Project ID
         bucket_name: Name of the bucket to delete
@@ -63,11 +63,11 @@ def delete_gcs_bucket(project_id: str, bucket_name: str) -> None:
 
 
 def upload_to_gcs(
-        bucket_name: str, 
+        bucket_name: str,
         files: List[str]
     ) -> Dict:
     """
-        Upload one or many docker artifact files 
+        Upload one or many docker artifact files
         to google cloud storage bucket.
         Input:
             bucket_name [str] = name of the bucket to transfer to
@@ -138,7 +138,7 @@ def cloud_build(
     formatted_date = datetime.date.today().strftime("%Y-%m-%d")
     bucket_hash = f"{formatted_date}_{str(uuid.uuid4())}"
     bucket = create_gcs_bucket(project_id=project_name, bucket_name=bucket_hash)
-    
+
     # 2a. Copy docker file and small docker artifacts (!= large docker artifacts) to temporary location
     bargs = read_artifacts(artifacts)
     files_to_upload_to_gcs = [_value for _, _value in bargs.items() if os.path.exists(os.path.abspath(_value))]
@@ -165,8 +165,8 @@ def cloud_build(
             'name': 'gcr.io/cloud-builders/docker',
             'env': 'DOCKER_BUILDKIT=1',
             'args': [
-                'build', 
-                '-t', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1', 
+                'build',
+                '-t', f'gcr.io/$PROJECT_ID/{app_name}:0.0.1',
                 '-t', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                 "--platform", "linux/amd64",
                 *mk_build_args(bargs),
@@ -175,10 +175,10 @@ def cloud_build(
             'id': docker_build_step_id,
             'waitFor': build_waitfor,
         }
-        
+
         # > 4c. Push container to registry
         cloudbuild_docker_push_latest = {
-            'name': 'gcr.io/cloud-builders/docker', 
+            'name': 'gcr.io/cloud-builders/docker',
             'args': ['push', f'gcr.io/$PROJECT_ID/{app_name}:latest'],
             'id': 'push-latest',
             'waitFor': [docker_build_step_id]
@@ -192,15 +192,17 @@ def cloud_build(
             'id': cloudbuild_deploy_id,
             'entrypoint': 'gcloud',
             'args': [
-                'run', 
-                'deploy', 
-                app_name, 
+                'run',
+                'deploy',
+                app_name,
                 '--allow-unauthenticated', # allow for unauthenticated access online
                 '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                 '--labels', hash_labels,
                 '--region', REGION,
-                '--timeout', '3600',
                 '--memory', f'{mem}Gi',
+                '--max-instances', '1',
+                '--min-instances', '0',
+                '--timeout=1h',
                 '--cpu', f'{cpu}'
             ],
             'waitFor': ['push-latest']
@@ -219,7 +221,6 @@ def cloud_build(
                     app_name,
                     '--image', f'gcr.io/$PROJECT_ID/{app_name}:latest',
                     '--labels', hash_labels,
-                    '--timeout', '3600',
                     '--region', REGION,
                     '--memory', f'{mem}Gi',
                     '--cpu', f'{cpu}'
@@ -228,7 +229,7 @@ def cloud_build(
             }
 
         full_build_yaml = BASE_CLOUD_BUILD_STRUCTURE.copy()
-        full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step, 
+        full_build_yaml['steps'] = [*cloudbuild_download_steps, cloudbuild_build_docker_step,
                                     cloudbuild_docker_push_latest, cloudbuild_cloudrun_deploy]
         full_build_yaml['images'] = [f'gcr.io/$PROJECT_ID/{app_name}:latest']
         dockerbuild_yaml = os.path.join(docker_dir.name, 'cloudbuild.yaml')
@@ -236,11 +237,11 @@ def cloud_build(
 
         # 5. Execute cloud build + run
         subprocess.run([
-            'gcloud', 'builds', 'submit', 
+            'gcloud', 'builds', 'submit',
             f'--region={REGION}',
             '--config', dockerbuild_yaml,
             '--polling-interval=50',
-            '--timeout=1h'
+            '--timeout=3h'
         ], cwd=docker_dir.name, env=ENV, check=True)
 
         # 6. Ensure unauthenticated access to the recently deployed application
@@ -273,11 +274,11 @@ def cloud_build(
                 if url.endswith(f'.{REGION}.run.app'):
                     final_url = url
                     break
-        
+
         if not final_url:
             print(bcolors.WARNING + f'Unable to capture application URL! Execute: `gcloud run services describe {app_name}` to get URL' + bcolors.ENDC)
         else:
             print(bcolors.OKGREEN + f'Shiny application deployed! URL: ' + bcolors.UNDERLINE + final_url + bcolors.ENDC)
 
     return final_url
-    
+
