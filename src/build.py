@@ -162,7 +162,7 @@ def cloud_build(
         # > 4b. Steps to build actual docker container
         docker_build_step_id = f'build-docker-{app_name}'
         cloudbuild_build_docker_step = {
-            'name': 'gcr.io/cloud-builders/docker',
+            'name': 'gcr.io/cloud-builders/docker:24.0.9',
             'env': 'DOCKER_BUILDKIT=1',
             'args': [
                 'build', 
@@ -201,6 +201,8 @@ def cloud_build(
                 '--region', REGION,
                 '--timeout', '3600',
                 '--memory', f'{mem}Gi',
+                '--max-instances', '1',
+                '--min-instances', '0',
                 '--cpu', f'{cpu}'
             ],
             'waitFor': ['push-latest']
@@ -222,7 +224,9 @@ def cloud_build(
                     '--timeout', '3600',
                     '--region', REGION,
                     '--memory', f'{mem}Gi',
-                    '--cpu', f'{cpu}'
+                    '--cpu', f'{cpu}',
+                    '--max-instances', '1',
+                    '--min-instances', '0'
                 ],
                 'waitFor': ['push-latest']
             }
