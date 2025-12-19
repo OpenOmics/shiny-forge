@@ -118,6 +118,3 @@ You can use a config file for most settings and override specific values via com
 ```bash
 shiny-forge posit --config posit-config.json --app-dir ./different-app
 ```
-
-**Note:** An example configuration file is available at `data/posit-config-example.json`.
-
