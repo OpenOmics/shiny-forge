@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+# Optimized Dockerfile for pre-built shiny applications (SHINY_FILES)
+# This avoids unnecessary Seurat object transfers, reducing costs
+
+FROM gcr.io/openomics-gcp/shinycell2-base:latest
+ADD Dockerfile.prebuilt /opt2/shinycell2.app.dockerfile
+ENV R_MAX_VSIZE=300000000000
+
+############### ARGS ################
+ARG PROJECT_ID
+ARG SHINY_FILES
+
+############## SETUP ################
+USER root
+RUN mkdir -p /data/aux
+
+# Copy pre-built shiny files tarball
+COPY ${SHINY_FILES} /data/aux/
+RUN <<EOF
+#!/bin/bash
+set -e
+files="/data/aux/$(basename ${SHINY_FILES})"
+echo "SHINY_FILE_DIR=$files" >> /etc/environment
+EOF
+
+RUN chown -R shinyuser:shiny /srv/shiny-server /opt2
+
+USER shinyuser
+
+# Use build_shinycell.R to extract the tarball (it handles directory cleanup)
+# Only --proj and --files are required in prebuilt mode
+RUN . /etc/environment && Rscript /opt2/build_shinycell.R \
+        --proj "${PROJECT_ID}" \
+        --files "${SHINY_FILE_DIR}"
+
+WORKDIR /srv/shiny-server/shinycell2
+
+# Listen on port for incoming connections
+EXPOSE 8080
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080 \
+    || (echo 'Error: Health check failed, unable to reach Shiny app on port 8080!' >&2 && exit 1)
+
+# Run the ShinyCell application
+CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/shinycell2', port=8080, host='0.0.0.0')"]

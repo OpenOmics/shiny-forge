@@ -4,7 +4,6 @@ shiny-forge - CLI tool for deploying Shiny applications to Google Cloud Platform
 
 This tool provides CRUD functionality for managing ShinyCell application deployments on GCP.
 """
-
 import argparse
 import os
 import json
@@ -154,7 +153,7 @@ class ShinyGCPDeploy:
     def _check_app_exists(self, app_name):
         # LBYL validation
         apps = list_apps()
-        if not app_name in apps:
+        if app_name not in apps:
             read_all()
             print("\n\n")
             raise ValueError(f'{app_name} does not exist in google cloud run services.')
@@ -170,7 +169,7 @@ class ShinyGCPDeploy:
             maxmem: int
         ):
         """
-        Create a new Shiny application deployment
+        Create a new Shiny application deployment (local Docker build)
         """
         # Get project
         project_id = subprocess.run(
@@ -181,6 +180,20 @@ class ShinyGCPDeploy:
             env=ENV,
             text=True
         ).stdout.strip()
+
+        # Check if we can use optimized Dockerfile.prebuilt
+        bargs_dict = read_artifacts(artifacts)
+        has_shiny_files = 'SHINY_FILES' in bargs_dict and bargs_dict['SHINY_FILES'] != 'NA'
+        
+        if has_shiny_files:
+            optimized_dockerfile = docker.replace('Dockerfile', 'Dockerfile.prebuilt')
+            if os.path.exists(optimized_dockerfile):
+                print("✨ Using optimized Dockerfile.prebuilt for pre-built shiny app")
+                docker = optimized_dockerfile
+                # Remove SEURAT_RDS and SEURAT_ASSAY from artifacts (not needed)
+                bargs_dict = {k: v for k, v in bargs_dict.items() if k not in ['SEURAT_RDS', 'SEURAT_ASSAY']}
+            else:
+                print("⚠️  Dockerfile.prebuilt not found, using standard build")
 
         # Get docker build-args
         build_args = read_dockerfile(docker)
@@ -203,14 +216,14 @@ class ShinyGCPDeploy:
                 tmpdir
             ], env=ENV, check=True)
             # Deploy to GCP artifact registry
-            print(f"Pushing Docker image to Google artifact registry...")
+            print("Pushing Docker image to Google artifact registry...")
             subprocess.run(
                 ["docker", "push", image_name.lower()],
                 env=ENV,
                 check=True
             )
             # Deploy to Cloud Run
-            print(f"Deploying to Cloud Run...")
+            print("Deploying to Cloud Run...")
             subprocess.run([
                 "gcloud", "run", "deploy", f"{app_name}",
                 "--image", image_name.lower(),
@@ -285,11 +298,10 @@ class ShinyGCPDeploy:
             maxmem: int
         ):
         """
-        Update an existing Shiny application deployment
+        Update an existing Shiny application deployment (local Docker build)
         """
         self._check_app_exists(app_name)
-        # Setup docker buildx
-        build_args = read_dockerfile(docker)
+        
         project_id = subprocess.run(
             ["gcloud", "config", "get-value", "project"],
             stdout=subprocess.PIPE,
@@ -298,6 +310,23 @@ class ShinyGCPDeploy:
             env=ENV,
             text=True
         ).stdout.strip()
+        
+        # Check if we can use optimized Dockerfile.prebuilt
+        bargs_dict = read_artifacts(artifacts)
+        has_shiny_files = 'SHINY_FILES' in bargs_dict and bargs_dict['SHINY_FILES'] != 'NA'
+        
+        if has_shiny_files:
+            optimized_dockerfile = docker.replace('Dockerfile', 'Dockerfile.prebuilt')
+            if os.path.exists(optimized_dockerfile):
+                print("✨ Using optimized Dockerfile.prebuilt for pre-built shiny app")
+                docker = optimized_dockerfile
+                # Remove SEURAT_RDS and SEURAT_ASSAY from artifacts (not needed)
+                bargs_dict = {k: v for k, v in bargs_dict.items() if k not in ['SEURAT_RDS', 'SEURAT_ASSAY']}
+            else:
+                print("⚠️  Dockerfile.prebuilt not found, using standard build")
+        
+        # Setup docker buildx
+        build_args = read_dockerfile(docker)
         image_name_base = f"gcr.io/{project_id}/{app_name}"
         tag = 'latest'
         image_name = f"{image_name_base}:{tag}"
@@ -313,12 +342,12 @@ class ShinyGCPDeploy:
                 *bargs, tmpdir
             ], env=ENV, check=True)
             # Deploy to GCP artifact registry
-            print(f"Pushing Docker image to Google artifact registry...")
+            print("Pushing Docker image to Google artifact registry...")
             subprocess.run([
                 "docker", "push", image_name.lower()
             ], env=ENV, check=True)
             # Update deployment
-            print(f"Updating Cloud Run deployment...")
+            print("Updating Cloud Run deployment...")
             subprocess.run([
                 "gcloud", "run", "services", "update", f"{app_name}",
                 "--image", image_name.lower(),

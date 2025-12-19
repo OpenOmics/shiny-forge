@@ -116,9 +116,28 @@ def mk_build_args(args):
 def silo_docker(dockerfile, barg_files):
     docker_file_dir = os.path.dirname(os.path.abspath(dockerfile))
     temp_dir = TemporaryDirectory()
+    # Directories and files to ignore during build (e.g., rsconnect deployment artifacts)
+    ignore_dirs = {'rsconnect', '__pycache__', '.git', '.github', 'node_modules'}
+    # Note: .gcloudignore is NOT ignored - it's needed by gcloud builds submit
+    ignore_files = {'.gitignore', '.dockerignore', '.DS_Store'}
     for _file in os.listdir(os.path.abspath(docker_file_dir)):
-        if _file not in barg_files:
-            shutil.copy(os.path.abspath(os.path.join(docker_file_dir, _file)), temp_dir.name)
+        # Skip files that are in barg_files (will be uploaded separately to GCS)
+        if _file in barg_files:
+            continue
+        file_path = os.path.join(docker_file_dir, _file)
+        # Skip ignored directories
+        if os.path.isdir(file_path) and _file in ignore_dirs:
+            continue
+        # Skip ignored files
+        if os.path.isfile(file_path) and _file in ignore_files:
+            continue
+        # Copy file or directory to temp directory
+        src = os.path.abspath(file_path)
+        dst = os.path.join(temp_dir.name, _file)
+        if os.path.isdir(src):
+            shutil.copytree(src, dst)
+        else:
+            shutil.copy(src, dst)
     return temp_dir
 
 
@@ -141,18 +160,37 @@ def cloud_build(
     
     # 2a. Copy docker file and small docker artifacts (!= large docker artifacts) to temporary location
     bargs = read_artifacts(artifacts)
-    files_to_upload_to_gcs = [_value for _, _value in bargs.items() if os.path.exists(os.path.abspath(_value))]
+    
+    # 2b. OPTIMIZATION: If SHINY_FILES is provided, skip uploading SEURAT_RDS
+    # This saves significant costs by not transferring unnecessary large files
+    has_shiny_files = 'SHINY_FILES' in bargs and bargs['SHINY_FILES'] != 'NA'
+    if has_shiny_files:
+        # Use optimized Dockerfile that doesn't require Seurat object
+        optimized_dockerfile = docker.replace('Dockerfile', 'Dockerfile.prebuilt')
+        if os.path.exists(optimized_dockerfile):
+            logging.info("Using optimized Dockerfile.prebuilt - skipping Seurat object upload")
+            docker = optimized_dockerfile
+            # Only upload SHINY_FILES, not SEURAT_RDS
+            files_to_upload_to_gcs = [bargs['SHINY_FILES']]
+            # Remove SEURAT_RDS and SEURAT_ASSAY from build args (not needed for prebuilt)
+            bargs = {k: v for k, v in bargs.items() if k not in ['SEURAT_RDS', 'SEURAT_ASSAY']}
+        else:
+            logging.warning("Dockerfile.prebuilt not found, using standard build process")
+            files_to_upload_to_gcs = [_value for _, _value in bargs.items() if os.path.exists(os.path.abspath(_value))]
+    else:
+        files_to_upload_to_gcs = [_value for _, _value in bargs.items() if os.path.exists(os.path.abspath(_value))]
+    
     docker_dir = silo_docker(docker, files_to_upload_to_gcs)
 
     with ExceptionHook(suppress=False) as hook:
-        # 2b. setup an exeception hook to remove temporary artifacts on build failure or success
+        # 2c. setup an exeception hook to remove temporary artifacts on build failure or success
         hook.set_cleanup_resources(
             temp_dir=docker_dir.name,
             google_bucket_name=bucket_hash,
             google_project_id=project_name
         )
 
-        # 3. Uploads large file artifacts to the temporary bucket
+        # 3. Uploads large file artifacts to the temporary bucket (optimized list)
         uploaded = upload_to_gcs(bucket_hash, files_to_upload_to_gcs)
 
         # 4. Create a Cloud Build configuration

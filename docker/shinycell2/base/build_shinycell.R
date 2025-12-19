@@ -28,7 +28,7 @@ option_list <- list(
     help = "RDS file created with saveRDS containing a seurat object"
   ),
   make_option(
-    "--proj",
+    c("-p", "--proj"),
     dest = "project",
     type = "character",
     metavar = "Project Name",
@@ -50,14 +50,14 @@ option_list <- list(
     "--defred",
     type = "character",
     metavar = "seurat_reduction_name",
-    dest = "defaultreduction",
+    dest = "default.reduction",
     default = NULL,
     help = paste0(
       "The default reduction to use with ShinyCell2, ",
       "this value must exist in Seurat::DefaultDimReduc(obj).\n The ",
       "two major prinipal components for this reductions must ",
       "be labeled the same label with a 1 and a 2 trailing it.\n ",
-      "i.e. defaultreduction = UMAP, UMAP1 and UMAP2 are the two components ",
+      "i.e. default.reduction = UMAP, UMAP1 and UMAP2 are the two components ",
       "that must exist"
     )
   ),
@@ -78,28 +78,28 @@ option_list <- list(
     )
   ),
   make_option(
-    c("-a", "--assay"),
-    type = "character",
-    dest = "assaytouse",
-    metavar = "ASSAY_NAME [str]",
-    default = NULL,
-    help = paste(
-      "The assay to utilize for ShinyCell2 web application.",
-      "Comma delimit multiple assays in a single string e.g.: RNA,spatial,ATAC,etc.",
-      "This will default to the first assay in the Seurat object (object@assays)",
-      sep = " "
-    )
-  ),
-  make_option(
     "--files",
     type = "character",
     dest = "shiny.files",
     metavar = "SHINY FILE [str]",
     default = NULL,
     help = paste(
-      "If you have pre-build your shiny app files to save",
+      "If you have pre-built your shiny app files to save",
       "memory consumption use this key word argument to pass in",
       "the tar.gz path with files",
+      sep = " "
+    )
+  ),
+  make_option(
+    "--assay",
+    type = "character",
+    dest = "assays.to.keep",
+    metavar = "ASSAYS [str]",
+    default = NULL,
+    help = paste(
+      "Comma-delimited list of assay names to keep from the Seurat object.",
+      "All other assays will be removed. If not specified, all assays will be kept",
+      "(except unsupported ones like HTO). Example: --assay RNA,Spatial",
       sep = " "
     )
   )
@@ -113,50 +113,58 @@ opt <- parse_args(OptionParser(option_list = option_list))
 
 # setup opt parse variables for downstream
 # usage into shinycell2
-rds_file <- opt$object
-project_name <- opt$project
-required_args <- c("object", "project")
-missing_args <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
 shiny_app_dir <- file.path("/srv/shiny-server/shinycell2")
 
-if (length(missing_args) > 0) {
-  cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
-  print_help(opt)
-  quit(status = 1)
-}
-browser()
+# Check if we're using pre-built files (SHINY_FILES mode)
+using_prebuilt_files <- !is.null(opt$shiny.files) && !is.na(opt$shiny.files) && 
+                       opt$shiny.files != "" && opt$shiny.files != "NA"
 
-if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" || opt$shiny.files == "NA") {
+# Validate required arguments based on mode
+if (using_prebuilt_files) {
+  # In SHINY_FILES mode, only PROJECT_ID is required
+  if (is.null(opt$project) || is.na(opt$project) || opt$project == "" || opt$project == "NA") {
+    cat("Error: --proj (PROJECT_ID) is required when using --files\n\n")
+    quit(status = 1)
+  }
+  project_name <- opt$project
+  rds_file <- NULL  # Not needed in this mode
+} else {
+  # In Seurat object mode, both object and project are required
+  required_args <- c("object", "project")
+  missing_args <- required_args[sapply(required_args, function(x) is.null(opt[[x]]))]
+  if (length(missing_args) > 0) {
+    cat("Error: Missing required arguments:", paste(missing_args, collapse = ", "), "\n\n")
+    print_help(opt)
+    quit(status = 1)
+  }
+  rds_file <- normalizePath(opt$object)
+  project_name <- opt$project
+}
+
+# Main processing logic
+if (!using_prebuilt_files) {
+  # Build from Seurat object
   seurat_obj <- readRDS(rds_file)
   if (is.null(opt$meta.to.rm) || is.na(opt$max.levels) || opt$meta.to.rm == "" || opt$meta.to.rm == "NA") {
     rmmeta <- NULL
   } else {
     if ("," %in% opt$meta.to.rm) {
-      rmmeta <- unlist(strsplit(opt$meta.to.rm, ",", fixed = TRUE))
+      rm.meta <- unlist(strsplit(opt$meta.to.rm, ",", fixed = TRUE))
     } else {
-      rmmeta <- c(trimws(gsub("[\r\n]", "", opt$meta.to.rm)))
+      rm.meta <- c(trimws(gsub("[\r\n]", "", opt$meta.to.rm)))
     }
   }
-  if (is.null(opt$assaytouse) || is.na(opt$assaytouse) || opt$assaytouse == "" || opt$assaytouse == "NA") {
-    assaytouse <- NULL
+  if (is.null(opt$default.reduction) | is.na(opt$default.reduction) | opt$default.reduction == "" | opt$default.reduction == "NA") {
+    default.reduction <- NULL
   } else {
-    if ("," %in% opt$assaytouse) {
-      assaytouse <- unlist(strsplit(opt$assaytouse, ",", fixed = TRUE))
+    if (opt$default.reduction %in% names(seurat_obj@reductions)) {
+      this_key <- seurat_obj@reductions[[opt$default.reduction]]@key
+      default.reduction <- c(paste0(this_key, "1"), paste0(this_key, "2"))
     } else {
-      assaytouse <- c(trimws(gsub("[\r\n]", "", opt$assaytouse)))
+      fatal(paste0("`", opt$default.reduction, "` reduction not found in seurat object!"))
     }
   }
-  if (is.null(opt$defaultreduction) || is.na(opt$defaultreduction) || opt$defaultreduction == "" || opt$defaultreduction == "NA") {
-    defaultreduction <- NULL
-  } else {
-    if (opt$defaultreduction %in% names(seurat_obj@reductions)) {
-      this_key <- seurat_obj@reductions[[opt$defaultreduction]]@key
-      defaultreduction <- c(paste0(this_key, "1"), paste0(this_key, "2"))
-    } else {
-      fatal(paste0("`", opt$defaultreduction, "` reduction not found in seurat object!"))
-    }
-  }
-  if (!is.null(opt$max.levels) || !is.na(opt$max.levels) || opt$max.level == "" || opt$max.level == "NA") {
+  if (!is.null(opt$max.levels) | !is.na(opt$max.levels) | opt$max.level == "" | opt$max.level == "NA") {
     max.levels <- opt$max.levels
   } else {
     max.levels <- NULL
@@ -171,7 +179,8 @@ if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" 
     fatal(" └── Please create a new RDS file with a seurat object!")
   }
 
-  # Remove unsupported assay
+  # Filter assays based on user input
+  # First, always remove unsupported assays (HTO, etc.)
   # ShinyCell2 supports:
   #   - CITEseq
   #   - spatial
@@ -179,9 +188,35 @@ if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" 
   unsupported_assays <- c("HTO")
   for (assay in unsupported_assays) {
     if (assay %in% names(seurat_obj@assays)) {
-      cat(paste0(assay, "unsupported assay removed!", sep = " "))
+      cat(paste0(assay, " unsupported assay removed!\n", sep = ""))
       seurat_obj[[assay]] <- NULL
     }
+  }
+  
+  # Second, if user specified --assay flag, keep only those assays
+  if (!is.null(opt$assays.to.keep) && !is.na(opt$assays.to.keep) && 
+      opt$assays.to.keep != "" && opt$assays.to.keep != "NA") {
+    assays_to_keep <- trimws(unlist(strsplit(opt$assays.to.keep, ",", fixed = TRUE)))
+    current_assays <- names(seurat_obj@assays)
+    
+    cat(paste0("Keeping only specified assays: ", paste(assays_to_keep, collapse = ", "), "\n"))
+    
+    # Remove assays not in the keep list
+    for (assay in current_assays) {
+      if (!assay %in% assays_to_keep) {
+        cat(paste0("Removing assay: ", assay, "\n"))
+        seurat_obj[[assay]] <- NULL
+      }
+    }
+    
+    # Warn if any requested assays don't exist
+    for (assay in assays_to_keep) {
+      if (!assay %in% current_assays) {
+        cat(paste0("Warning: Requested assay '", assay, "' not found in Seurat object\n"))
+      }
+    }
+  } else {
+    cat("No --assay filter specified, keeping all supported assays\n")
   }
 
   # Create ShinyCell config file
@@ -198,8 +233,8 @@ if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" 
 
   remove_metas <- c()
 
-  if (!is.null(rmmeta)) {
-    remove_metas <- c(remove_metas, rmmeta)
+  if (!is.null(rm.meta)) {
+    remove_metas <- c(remove_metas, rm.meta)
   }
 
   for (config_label in shinycell_config$ID) {
@@ -216,17 +251,30 @@ if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" 
   # in the default location for
   # Shiny/Posit server: i.e.
   # /srv/shiny-server/${app_name}
+  chunk <- as.integer(nrow(seurat_obj@meta.data) * 0.10)
+  if (chunk < 10) {
+    chunk <- 10
+  }
   files_params <- list(
     seurat_obj,
     shinycell_config,
     shiny.dir = shiny_app_dir,
     shiny.prefix = "sc1",
-    chunkSize = as.integer(nrow(seurat_obj@meta.data) * 0.10)
+    chunkSize = chunk
   )
 
-  if (!is.null(defaultreduction)) {
-    files_params$dimred.to.use <- opt$defaultreduction
-    files_params$default.dimred <- defaultreduction
+  if (!is.null(default.reduction)) {
+    files_params$default.dimred <- default.reduction
+    to.start <- c(opt$default.reduction)
+    to.add <- c()
+    for (red in names(seurat_obj@reductions)) {
+      if (red != opt$default.reduction) {
+        to.add <- c(to.add, red)
+      }
+    }
+    to.use <- to.start
+    to.use <- c(to.use, to.add)
+    files_params$dimred.to.use <- to.use
   }
 
   do.call(
@@ -243,6 +291,12 @@ if (is.null(opt$shiny.files) || is.na(opt$shiny.files) || opt$shiny.files == "" 
   if (!grepl("\\.tar\\.gz$", opt$shiny.files, ignore.case = TRUE) && !grepl("\\.tgz$", opt$shiny.files, ignore.case = TRUE)) {
     fatal("Error: File is not a .tar.gz or .tgz file:", opt$shiny.files, "\nFile must have .tar.gz or .tgz extension\n")
   }
+  # Clean the directory before extraction to avoid stale files
+  if (dir.exists(shiny_app_dir)) {
+    cat("Removing existing directory:", shiny_app_dir, "\n")
+    unlink(shiny_app_dir, recursive = TRUE)
+  }
+  dir.create(shiny_app_dir, showWarnings = FALSE, recursive = TRUE)
   cat("Extracting", opt$shiny.files, "to", shiny_app_dir, "\n")
   untar(tarfile = opt$shiny.files, exdir = shiny_app_dir)
   cat("Successfully extracted!\n")
