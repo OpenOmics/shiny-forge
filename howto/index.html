@@ -1,0 +1,1197 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../support/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>How To Use - shiny-forge</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#how-to-use-shiny-forge" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="shiny-forge" class="md-header__button md-logo" aria-label="shiny-forge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            shiny-forge
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How To Use
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="shiny-forge" class="md-nav__button md-logo" aria-label="shiny-forge" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    shiny-forge
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How To Use
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How To Use
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CREATE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CREATE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Arguments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Required Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dockerfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dockerfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifacts-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifacts file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App name
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Arguments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optional Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-max-cpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --max-cpu
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-max-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --max-memory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        READ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="READ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UPDATE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOGS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LOGS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-lastn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --lastn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../support/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supported apps
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/parsing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Parsing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/building/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Building
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Config
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/hooks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hooks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/posit.md" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Posit Connect
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#create" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CREATE
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CREATE">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#required-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Required Arguments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Required Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dockerfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dockerfile
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifacts-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Artifacts file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#app-name" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        App name
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional Arguments
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Optional Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-cloud" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --cloud
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-max-cpu" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --max-cpu
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#-max-memory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --max-memory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        READ
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="READ">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No arguments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#with" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        With
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#update" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UPDATE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#delete" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DELETE
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        LOGS
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LOGS">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#-lastn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        --lastn
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="how-to-use-shiny-forge">How to use shiny-forge</h1>
+<h2 id="create">CREATE</h2>
+<p>The <code>shiny-forge create</code> sub-command is used to create an entirely new google cloud run instance
+serving the shiny application of interest.</p>
+<p>The create command requires 3 arguments:</p>
+<pre><code class="language-bash">usage: shiny-forge create [-h] [--cloud] [--max-cpu MAXCPU] [--max-memory MAXMEM] app_name docker artifacts
+
+positional arguments:
+  app_name             Name of the application to deploy on the `openomics-gcp` project
+  docker               Dockerfile or to use for shiny application
+  artifacts            File containing the mapping between Dockerfile
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --cloud              File containing the mapping between Dockerfile
+  --max-cpu MAXCPU     Maximum number of CPUs to use for application (Default 2 CPU)
+  --max-memory MAXMEM  Maximum number of memory (in gigabytes) to use for application (Default 4GiB)
+</code></pre>
+<h3 id="required-arguments">Required Arguments</h3>
+<h4 id="dockerfile">Dockerfile</h4>
+<p>The dockerfile utilized here should be the final Dockerfile in any type of staged build. It should accept
+all the relevant docker <a href="https://docs.docker.com/build/building/variables/">BUILD ARGUMENTS</a> with default values for optional arguments.</p>
+<p>And should all specific google cloud run container requirements: https://cloud.google.com/run/docs/deploying</p>
+<p>See <a href="../docker/shinycell2/app/Dockerfile">ShinyCell2 Dockerfile</a> for a qualified example.</p>
+<h4 id="artifacts-file">Artifacts file</h4>
+<p>The artifacts file is basically the equivalent syntax of <a href="https://www.geeksforgeeks.org/python/how-to-create-and-use-env-files-in-python/">ENV files</a>.
+It is a plain text file without any restrictions of file extentsion that includes key-value pairs mapped to each other using "=" and pairs are
+seperated by line breaks. Such as:</p>
+<pre><code class="language-bash">SEURAT_RDS=path/to/seurat_object.rds
+PROJECT_ID=project-title
+DEFAULT_RED=default.reduction
+RM_META=meta.data.to.remove
+MAX_LEVELS=100
+</code></pre>
+<h4 id="app-name">App name</h4>
+<p>A alphanumeric identifier which can only contain digits, letters, letters and hyphens, the last character cannot be a hyphen and the maximum
+possible length of the identifer is 63 characters.</p>
+<blockquote>
+<p>[!IMPORTANT] 
+Resource name must use only lowercase letters, numbers and '-'. Must begin with a letter and cannot end with a '-'. Maximum length is 63 characters. 
+These requirements are set by google: 
+- https://cloud.google.com/compute/docs/labeling-resources
+- https://cloud.google.com/compute/docs/naming-resources</p>
+</blockquote>
+<h3 id="optional-arguments">Optional Arguments</h3>
+<h4 id="-cloud">--cloud</h4>
+<p>An optional flag that tells the application to build the docker image using Google cloud build service rather than
+locally building the docker image and pushing that image up to run on google cloud.</p>
+<p>This costs extra with regard to google cloud billing, however is the only way to build some larger docker images
+given the necessary resources.</p>
+<blockquote>
+<p>[!NOTE]<br />
+Google cloud activities of shiny-forge are controlled by the <code>gcloud</code> application
+any users of this option need to have the correct permissions and be authenticated
+with the <code>gcloud</code> application before use</p>
+</blockquote>
+<h4 id="-max-cpu">--max-cpu</h4>
+<p>An optional flag that dictates the maximum number of CPUs to utilize within the shiny application instance</p>
+<blockquote>
+<p>[!NOTE]
+This CPU resource allocation refers to the instance serving the Shiny application, not the 
+instance that the docker image is built on.</p>
+<p>[!IMPORTANT]<br />
+Utilizing more additional CPUs will charge the GCP billing account at a higher rate, see
+https://cloud.google.com/products/calculator for pricing details</p>
+</blockquote>
+<h4 id="-max-memory">--max-memory</h4>
+<p>An optional flag that dictates the maximum number of gigabytes of RAM memory to utilize within the shiny application instance</p>
+<blockquote>
+<p>[!NOTE]
+This memory resource allocation refers to the instance serving the Shiny application, not the 
+instance that the docker image is built on.</p>
+<p>[!IMPORTANT]<br />
+Utilizing more additional memory will charge the GCP billing account at a higher rate, see
+https://cloud.google.com/products/calculator for pricing details</p>
+</blockquote>
+<h2 id="read">READ</h2>
+<pre><code>usage: shiny-forge read [-h] [app_name]
+
+positional arguments:
+  app_name    Name of the application to get details for
+
+optional arguments:
+  -h, --help  show this help message and exit
+</code></pre>
+<h3 id="no-arguments">No arguments</h3>
+<p>Running <code>shiny-forge read</code> without any arguments will list all the running cloud run jobs:</p>
+<pre><code class="language-bash">$ ./shiny-forge read
+NAME         META_ID    COMMIT_SHA                                DEPLOYED_BY   DEPLOYED_ON
+project_one  id1        0c735ecfd3de9237e8a7728817e83d52d456e1a4  clouduser     06-16-2025
+project_one  id2        0c735ecfd3de9237e8a7728817e83d52d456e1a4  clouduser     06-17-2025
+project_one  id3        65e83cf600cbb51803f9fb459b13f5f0d9e83cb8  clouduser     06-03-2025
+</code></pre>
+<h3 id="with">With <app_name></h3>
+<p>Running <code>shiny-forge read</code> with a project identifer will list additional information about the cloud run job:</p>
+<pre><code class="language-bash">$ ./shiny-forge read project-0541
+✔ Service project-0541 in region us-west1
+
+URL:     https://project-1.us-west1.run.app
+Ingress: all
+Traffic:
+  100% LATEST (currently grs-0541-00001-z2b)
+
+Scaling:          Auto (Min: 0)
+Threat Detection: Enabled
+
+Last updated on 2025-05-19T21:17:42.227833Z by clouduser@google.com:
+  Revision project-0541-00001-z2b
+  Container None
+    Image:           gcr.io/project-registry/project-0541:latest
+    Port:            8080
+    Memory:          2Gi
+    CPU:             1
+    Startup Probe:
+      TCP every 240s
+      Port:          8080
+      Initial delay: 0s
+      Timeout:       240s
+      Failure threshold: 1
+      Type:          Default
+  Service account:   clouduser@google.com
+  Concurrency:       80
+  Max instances:     100
+  Timeout:           300s
+</code></pre>
+<h2 id="update">UPDATE</h2>
+<p>Update is essentially the same command as create. The important distinction here is that <app_name> must
+already exist in google cloud run, and the application will be deployed to replace the previous iteration[revision]
+of the application. The required and optional arguments are exactly the same:</p>
+<pre><code>usage: shiny-forge update [-h] [--cloud] [--max-cpu MAXCPU] [--max-memory MAXMEM] app_name docker artifacts
+
+positional arguments:
+  app_name             Name of the application
+  docker               Dockerfile or to use for shiny application
+  artifacts            File containing the mapping between Dockerfile
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --cloud              File containing the mapping between Dockerfile
+  --max-cpu MAXCPU     Maximum number of CPUs to use for application (Default 2 CPU)
+  --max-memory MAXMEM  Maximum number of memory (in gigabytes) to use for application (Default 4GiB)
+</code></pre>
+<h2 id="delete">DELETE</h2>
+<p>Delete sub-command will delete instances of google cloud run by <app_name> unique identifier.</p>
+<pre><code>usage: shiny-forge delete [-h] app_name
+
+positional arguments:
+  app_name    Name of the application
+
+optional arguments:
+  -h, --help  show this help message and exit
+</code></pre>
+<blockquote>
+<p>[!IMPORTANT]<br />
+Utilizing more additional memory will charge the GCP billing account at a higher rate, see
+https://cloud.google.com/products/calculator for pricing details</p>
+</blockquote>
+<h2 id="logs">LOGS</h2>
+<p>Logs sub-command will list the log entries for a particular <app_name> in a YAML-esque format</p>
+<pre><code>usage: shiny-forge logs [-h] [--lastn LASTN] app_name
+
+positional arguments:
+  app_name       Name of the application
+
+optional arguments:
+  -h, --help     show this help message and exit
+  --lastn LASTN  Limit log entries to the last N entries
+</code></pre>
+<h3 id="-lastn">--lastn</h3>
+<p>This is a optional key word argument that limits the returned logs to <em>n</em> entries, where <em>n</em> is the integer specified as the value</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.prefetch"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
