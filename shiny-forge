@@ -24,6 +24,7 @@ from src.parse import \
     app_name_valid
 from src.build import cloud_build
 from src.config import REGION, ENV, bcolors
+from src.posit import posit_deploy_handler
 
 # Constants
 CLI_MAIN_ENTRY_POINT = os.path.basename(sys.argv[0])
@@ -448,11 +449,11 @@ def main():
     Main entry point for the command-line interface
     """
     parser = argparse.ArgumentParser(
-        description="CLI tool for deploying Shiny applications to Google Cloud Platform",
+        description="CLI tool for deploying Shiny applications to Google Cloud Platform and Posit Connect",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog= dedent("""
                 Examples:
-                Deploy a new application:
+                Deploy a new application to GCP:
                     {0} create my-app ./my-app-dir
 
                 List all deployed applications:
@@ -469,6 +470,15 @@ def main():
 
                 View application logs:
                     {0} logs my-app
+
+                Deploy to Posit Connect with direct arguments:
+                    {0} posit --username user --api-key KEY --server https://connect.example.com --app-dir ./my-app
+
+                Deploy to Posit Connect with JSON config:
+                    {0} posit --config config.json
+
+                Deploy to Posit Connect with config and overrides:
+                    {0} posit --config config.json --app-dir ./different-app
                 """.format(CLI_MAIN_ENTRY_POINT))
     )
 
@@ -507,10 +517,33 @@ def main():
     logs_parser.add_argument("app_name", help="Name of the application")
     logs_parser.add_argument("--lastn", dest="lastn", help="Limit log entries to the last N entries")
     
+    # Posit command
+    posit_parser = subparsers.add_parser("posit", help="Deploy a Shiny application to Posit Connect")
+    posit_parser.add_argument("--username", "-u", help="Posit Connect username")
+    posit_parser.add_argument("--api-key", "-k", dest="api_key", help="Posit Connect API key")
+    posit_parser.add_argument("--server", "-s", help="Posit Connect server URL (e.g., https://connect.example.com)")
+    posit_parser.add_argument("--app-dir", "-d", dest="app_dir", help="Path to Shiny application directory")
+    posit_parser.add_argument("--config", "-c", dest="config_file", help="Path to JSON configuration file (can override individual settings)")
+    posit_parser.add_argument("--app-name", "-n", dest="app_name", help="Optional name for the application (defaults to directory name)")
+    posit_parser.add_argument("--title", "-t", help="Optional title for the application")
+    
     args = parser.parse_args()
     
     if not args.command:
         parser.print_help()
+        return
+    
+    # Handle posit command separately (doesn't need ShinyGCPDeploy instance)
+    if args.command == "posit":
+        posit_deploy_handler(
+            username=args.username,
+            api_key=args.api_key,
+            server=args.server,
+            app_dir=args.app_dir,
+            config_file=args.config_file,
+            app_name=args.app_name,
+            title=args.title
+        )
         return
     
     deployer = ShinyGCPDeploy(args.cloud)

@@ -13,6 +13,7 @@ nav:
     - Building: reference/building.md
     - Config: reference/config.md
     - Hooks: reference/hooks.md
+    - Posit Connect: reference/posit.md
 plugins:
 - search
 - mkdocstrings

@@ -14,7 +14,7 @@
 
 ## Overview
 
-`shiny-forge` is a command-line tool designed to streamline the deployment of [R Shiny applications](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/) to Google Cloud Platform (GCP). With integrated support for Docker and Google Cloud Platform (GCP), this tool enables users to build, deploy, and manage Shiny applications to the cloud with ease!
+`shiny-forge` is a command-line tool designed to streamline the deployment of [R Shiny applications](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/) to Google Cloud Platform (GCP) and Posit Connect. With integrated support for Docker, Google Cloud Platform (GCP), and Posit Connect, this tool enables users to build, deploy, and manage Shiny applications to the cloud with ease!
 
 ## Getting Started
 
@@ -49,3 +49,75 @@ export PATH="${PATH}:${PWD}"
 # Get usage information
 shiny-forge -h
 ```
+
+## Usage
+
+### Deploy to Google Cloud Platform
+
+```bash
+# Create a new GCP deployment
+shiny-forge create my-app ./path/to/Dockerfile ./path/to/artifacts.txt
+
+# Update an existing GCP deployment
+shiny-forge update my-app ./path/to/Dockerfile ./path/to/artifacts.txt
+
+# List all deployed applications
+shiny-forge read
+
+# Get details about a specific application
+shiny-forge read my-app
+
+# Delete an application
+shiny-forge delete my-app
+
+# View application logs
+shiny-forge logs my-app
+```
+
+### Deploy to Posit Connect
+
+The `posit` subcommand allows you to deploy Shiny applications to Posit Connect servers. You can provide credentials and configuration either via command-line arguments or a JSON configuration file.
+
+#### Using command-line arguments:
+
+```bash
+shiny-forge posit \
+  --username your-username \
+  --api-key your-api-key \
+  --server https://connect.example.com \
+  --app-dir ./path/to/shiny-app \
+  --app-name my-shiny-app \
+  --title "My Shiny Application"
+```
+
+#### Using a JSON configuration file:
+
+Create a configuration file (e.g., `posit-config.json`):
+
+```json
+{
+  "username": "your-username",
+  "api_key": "your-api-key-here",
+  "server": "https://connect.example.com",
+  "app_dir": "/path/to/your/shiny-app",
+  "app_name": "my-shiny-app",
+  "title": "My Shiny Application"
+}
+```
+
+Then deploy using:
+
+```bash
+shiny-forge posit --config posit-config.json
+```
+
+#### Combining config file with command-line overrides:
+
+You can use a config file for most settings and override specific values via command-line:
+
+```bash
+shiny-forge posit --config posit-config.json --app-dir ./different-app
+```
+
+**Note:** An example configuration file is available at `data/posit-config-example.json`.
+

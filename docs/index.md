@@ -7,7 +7,7 @@
 
 ## Overview
 
-`shiny-forge` is a command-line tool designed to streamline the deployment of [R Shiny applications](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/) to Google Cloud Platform (GCP). With integrated support for Docker and Google Cloud Platform (GCP), this tool enables users to build, deploy, and manage Shiny applications to the cloud with ease!
+`shiny-forge` is a command-line tool designed to streamline the deployment of [R Shiny applications](https://shiny.posit.co/r/getstarted/shiny-basics/lesson1/) to Google Cloud Platform (GCP) and Posit Connect. With integrated support for Docker and multiple deployment targets, this tool enables users to build, deploy, and manage Shiny applications to the cloud with ease!
 
 ## Getting Started
 
@@ -49,6 +49,8 @@ shiny-forge -h
 
 Shiny forge works in a CRUD-like fashion. Allowing for creation, deletion, and revision of cloud run jobs and quick information printing at the command line.
 
+### GCP Deployment Commands
+
 `shiny-forge create`
 
 `shiny-forge update`
@@ -58,6 +60,12 @@ Shiny forge works in a CRUD-like fashion. Allowing for creation, deletion, and r
 `shiny-forge logs`
 
 `shiny-forge read [application]`
+
+### Posit Connect Deployment
+
+`shiny-forge posit`
+
+Deploy Shiny applications to Posit Connect servers. Supports flexible configuration via command-line arguments, JSON files, or both. See the [Posit Connect reference](reference/posit.md) for detailed usage.
 
 ## Project layout
 
