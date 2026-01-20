@@ -56,15 +56,19 @@ shiny-forge -h
 
 ```bash
 # Create a new GCP deployment
-shiny-forge create my-app ./path/to/Dockerfile ./path/to/artifacts.txt
+shiny-forge create my-app \
+    ./path/to/Dockerfile \
+    ./path/to/artifacts.txt
 
 # Update an existing GCP deployment
-shiny-forge update my-app ./path/to/Dockerfile ./path/to/artifacts.txt
+shiny-forge update my-app \
+    ./path/to/Dockerfile \
+    ./path/to/artifacts.txt
 
 # List all deployed applications
 shiny-forge read
 
-# Get details about a specific application
+# Get details about an application
 shiny-forge read my-app
 
 # Delete an application
