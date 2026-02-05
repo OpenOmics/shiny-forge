@@ -212,6 +212,7 @@ def deploy_to_posit(
     app_dir: str,
     app_name: Optional[str] = None,
     title: Optional[str] = None,
+    disable_ssl_verify: bool = False,
     **kwargs
 ) -> None:
     """
@@ -229,6 +230,7 @@ def deploy_to_posit(
         app_dir: Path to Shiny application directory
         app_name: Optional name for the application (defaults to directory name)
         title: Optional title for the application
+        disable_ssl_verify: Disable SSL certificate verification (use for self-signed certs)
         **kwargs: Additional arguments to pass to rsconnect deploy_app
         
     Raises:
@@ -241,6 +243,12 @@ def deploy_to_posit(
     # Default app_name to directory name if not provided
     if not app_name:
         app_name = os.path.basename(os.path.abspath(app_dir))
+    
+    # SSL verification warning
+    if disable_ssl_verify:
+        print(f"{bcolors.WARNING}⚠️  SSL certificate verification is DISABLED{bcolors.ENDC}")
+        print(f"{bcolors.WARNING}   This should only be used for self-signed certificates{bcolors.ENDC}")
+        print(f"{bcolors.WARNING}   Your connection is NOT fully secure!{bcolors.ENDC}")
     
     # Detect and log proxy configuration
     proxy_config = get_proxy_config()
@@ -294,6 +302,8 @@ def deploy_to_posit(
     
     try:
         # Create RSConnect server connection
+        # Note: RSConnectServer doesn't have insecure parameter,
+        # we need to pass it to deploy_app instead
         connect_server = RSConnectServer(url=server, api_key=api_key)
         
         print(f"{bcolors.OKBLUE}Connected to Posit Connect server{bcolors.ENDC}")
@@ -308,6 +318,10 @@ def deploy_to_posit(
             'directory': abs_app_dir,
             'title': title or app_name,
         }
+        
+        # Add SSL verification setting if disabled
+        if disable_ssl_verify:
+            deploy_kwargs['insecure'] = True
         
         # Add entry_point only if specified (not for ui.R+server.R auto-detect)
         if entrypoint:
@@ -338,19 +352,25 @@ def deploy_to_posit(
         error_msg = str(e)
         print(f"{bcolors.FAIL}❌ Error deploying to Posit Connect: {error_msg}{bcolors.ENDC}")
         
-        # Provide helpful hints for common proxy errors
-        if "Tunnel connection failed" in error_msg or "503" in error_msg:
+        # Provide helpful hints for common errors
+        if "CERTIFICATE_VERIFY_FAILED" in error_msg or "SSL" in error_msg:
+            print(f"\n{bcolors.WARNING}SSL Certificate Troubleshooting:{bcolors.ENDC}")
+            print(f"  • The server is using a self-signed or untrusted SSL certificate")
+            print(f"  • Add --disable-ssl-verify flag to bypass certificate verification")
+            print(f"  • Example: shiny-forge posit deploy --disable-ssl-verify ...")
+            print(f"\n{bcolors.WARNING}⚠️  WARNING: Disabling SSL verification reduces security!{bcolors.ENDC}")
+        elif "Tunnel connection failed" in error_msg or "503" in error_msg:
             print(f"\n{bcolors.WARNING}Proxy Troubleshooting:{bcolors.ENDC}")
-            print(f"  • The proxy server rejected the HTTPS tunnel connection")
+            print("  • The proxy server rejected the HTTPS tunnel connection")
             print(f"  • Check if {server} is allowed through the proxy")
-            print(f"  • Verify proxy firewall rules allow CONNECT method")
-            print(f"  • Consider proxy authentication if required")
-            print(f"  • Try connecting directly without proxy (unset http_proxy/https_proxy)")
+            print("  • Verify proxy firewall rules allow CONNECT method")
+            print("  • Consider proxy authentication if required")
+            print("  • Try connecting directly without proxy (unset http_proxy/https_proxy)")
         elif "Connection" in error_msg or "timeout" in error_msg.lower():
             print(f"\n{bcolors.WARNING}Connection Troubleshooting:{bcolors.ENDC}")
             print(f"  • Verify server URL is correct: {server}")
-            print(f"  • Check network connectivity to Posit Connect server")
-            print(f"  • Verify API key is valid and not expired")
+            print("  • Check network connectivity to Posit Connect server")
+            print("  • Verify API key is valid and not expired")
         
         raise
 
@@ -362,7 +382,8 @@ def posit_deploy_handler(
     app_dir: Optional[str] = None,
     config_file: Optional[str] = None,
     app_name: Optional[str] = None,
-    title: Optional[str] = None
+    title: Optional[str] = None,
+    disable_ssl_verify: bool = False
 ) -> None:
     """
     Handler function for the posit deploy command.
@@ -380,6 +401,7 @@ def posit_deploy_handler(
         config_file: Path to JSON configuration file
         app_name: Optional name for the application
         title: Optional title for the application
+        disable_ssl_verify: Disable SSL certificate verification
     """
     try:
         # Create configuration from provided arguments
@@ -398,7 +420,8 @@ def posit_deploy_handler(
             server=config['server'],
             app_dir=config['app_dir'],
             app_name=app_name,
-            title=title
+            title=title,
+            disable_ssl_verify=disable_ssl_verify
         )
         
     except Exception as e:

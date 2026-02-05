@@ -526,6 +526,8 @@ def main():
     posit_parser.add_argument("--config", "-c", dest="config_file", help="Path to JSON configuration file (can override individual settings)")
     posit_parser.add_argument("--app-name", "-n", dest="app_name", help="Optional name for the application (defaults to directory name)")
     posit_parser.add_argument("--title", "-t", help="Optional title for the application")
+    posit_parser.add_argument("--disable-ssl-verify", dest="disable_ssl_verify", action="store_true", 
+                              help="Disable SSL certificate verification (use for self-signed certificates)")
     
     args = parser.parse_args()
     
@@ -542,7 +544,8 @@ def main():
             app_dir=args.app_dir,
             config_file=args.config_file,
             app_name=args.app_name,
-            title=args.title
+            title=args.title,
+            disable_ssl_verify=args.disable_ssl_verify
         )
         return
     
