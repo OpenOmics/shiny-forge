@@ -244,6 +244,9 @@ def deploy_to_posit(
     if not app_name:
         app_name = os.path.basename(os.path.abspath(app_dir))
     
+    # Debug: Show SSL verification setting
+    print(f"{bcolors.OKBLUE}SSL Verification: {'DISABLED' if disable_ssl_verify else 'ENABLED'}{bcolors.ENDC}")
+    
     # SSL verification warning
     if disable_ssl_verify:
         print(f"{bcolors.WARNING}⚠️  SSL certificate verification is DISABLED{bcolors.ENDC}")
@@ -302,9 +305,12 @@ def deploy_to_posit(
     
     try:
         # Create RSConnect server connection
-        # Note: RSConnectServer doesn't have insecure parameter,
-        # we need to pass it to deploy_app instead
-        connect_server = RSConnectServer(url=server, api_key=api_key)
+        # RSConnectServer also needs the insecure parameter for server validation
+        connect_server = RSConnectServer(
+            url=server, 
+            api_key=api_key,
+            insecure=disable_ssl_verify
+        )
         
         print(f"{bcolors.OKBLUE}Connected to Posit Connect server{bcolors.ENDC}")
         
@@ -341,6 +347,7 @@ def deploy_to_posit(
         print(f"  directory: {deploy_kwargs.get('directory')}")
         print(f"  entry_point: {deploy_kwargs.get('entry_point')}")
         print(f"  app_mode: {deploy_kwargs.get('app_mode')}")
+        print(f"  insecure: {deploy_kwargs.get('insecure', False)}")
         
         # Deploy the application using rsconnect deploy_app
         deploy_app(**deploy_kwargs)
@@ -403,6 +410,9 @@ def posit_deploy_handler(
         title: Optional title for the application
         disable_ssl_verify: Disable SSL certificate verification
     """
+    # Debug: Show that we received the parameter
+    print(f"{bcolors.OKBLUE}[DEBUG] posit_deploy_handler called with disable_ssl_verify={disable_ssl_verify}{bcolors.ENDC}")
+    
     try:
         # Create configuration from provided arguments
         config = create_posit_config(
