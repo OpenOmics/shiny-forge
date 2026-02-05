@@ -11,6 +11,7 @@ import sys
 from typing import Optional, Dict, Any
 from rsconnect.api import RSConnectServer
 from rsconnect.actions import deploy_app
+from rsconnect.models import AppModes
 from src.config import bcolors
 
 
@@ -285,16 +286,16 @@ def deploy_to_posit(
     
     if app_type == 'app.R':
         entrypoint = 'app.R'
-        app_mode = 'shiny'
+        app_mode = AppModes.SHINY
         print(f"{bcolors.OKBLUE}Using single-file R Shiny entry point: app.R{bcolors.ENDC}")
     elif app_type == 'ui.R+server.R':
         # For old-style Shiny apps, use server.R as entry point
         entrypoint = 'server.R'
-        app_mode = 'shiny'
+        app_mode = AppModes.SHINY
         print(f"{bcolors.OKBLUE}Using old-style R Shiny with entry point: server.R{bcolors.ENDC}")
     elif app_type == 'python':
         entrypoint = 'app.py'
-        app_mode = 'python-shiny'
+        app_mode = AppModes.PYTHON_SHINY
         print(f"{bcolors.OKBLUE}Using Python Shiny entry point: app.py{bcolors.ENDC}")
     
     print(f"{bcolors.OKBLUE}Deploying Shiny application to Posit Connect...{bcolors.ENDC}")
@@ -346,7 +347,8 @@ def deploy_to_posit(
         print(f"{bcolors.OKBLUE}Deployment parameters:{bcolors.ENDC}")
         print(f"  directory: {deploy_kwargs.get('directory')}")
         print(f"  entry_point: {deploy_kwargs.get('entry_point')}")
-        print(f"  app_mode: {deploy_kwargs.get('app_mode')}")
+        app_mode_val = deploy_kwargs.get('app_mode')
+        print(f"  app_mode: {app_mode_val.name() if app_mode_val else None}")
         print(f"  insecure: {deploy_kwargs.get('insecure', False)}")
         
         # Deploy the application using rsconnect deploy_app
